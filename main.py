@@ -131,10 +131,10 @@ def main_orchestrator_function():
     # ############## INTERRUTTORI DI CONTROLLO DEL PIPELINE ##############
     # ##################################################################
     # Imposta a False per saltare la generazione dei segmenti se già presenti su disco
-    RUN_DISK_SEGMENTATION = True
+    RUN_DISK_SEGMENTATION = False
 
     # Imposta a False per saltare l'HPO e caricare i parametri da un file JSON
-    RUN_HPO = True
+    RUN_HPO = False
     # ##################################################################
 
     # --- PARAMETRI GLOBALI E PERCORSI ---
@@ -267,6 +267,7 @@ def main_orchestrator_function():
             'sampling_rate': 500, 'slicing_config': GRAZ_TRAINING_PREP_CONFIG, 'apply_scaling_options': [True]
         }
     }
+
 
     # --- Salvataggio Configurazione Iniziale ---
     full_config_summary = {

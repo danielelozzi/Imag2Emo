@@ -78,13 +78,14 @@ def _binarize_labels(labels: np.ndarray, threshold: float) -> np.ndarray:
     if labels.ndim > 1: # Se per caso fossero one-hot, anche se non previsto qui
         print("Attenzione: _binarize_labels ha ricevuto label multidimensionali. Tentativo di usare argmax.")
         labels = np.argmax(labels, axis=1)
+    labels = np.round(labels) # Label arrotondate all'intero più vicino prima di essere binarizzate per non perdere precisione
     return (labels >= threshold).astype(np.int_)
 
 def _load_all_subject_data_segmented_concatenated(config: dict) -> Tuple[np.ndarray, np.ndarray, Dict[str, Tuple[int, int]], List[str]]:
     """
     Carica i dati EEG e le etichette *GIÀ SEGMENTATI* da tutti i soggetti.
     Concatena i dati di tutti i soggetti in array globali.
-    Restituisce i dati globali, una mappa degli indici per soggetto, e gli ID dei soggetti validi.
+    Restituisce i dati globali, una mappa degli indi    ci per soggetto, e gli ID dei soggetti validi.
 
     Args:
         config (dict): Dizionario di configurazione.
