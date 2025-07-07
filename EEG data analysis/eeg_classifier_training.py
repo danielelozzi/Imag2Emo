@@ -57,17 +57,37 @@ def train_and_evaluate_model(config: dict, data_splits: dict, writer=None, skip_
     # --- Calcolo robusto del numero di classi ---
     all_labels_in_fold = np.concatenate([arr for arr in [y_train_orig, y_val_orig, y_test] if arr.size > 0])
 
-    if all_labels_in_fold.size > 0:
-        n_classes = len(np.unique(all_labels_in_fold))
-        if is_classification and n_classes < 2:
-            print(f"  ATTENZIONE (Fold {fold_id_desc}): Trovata solo 1 classe nei dati. Imposto n_classes=2 per coerenza.")
+    # Se is_classification è True, calcola n_classes dai dati binarizzati.
+    # Altrimenti, per regressione, n_classes potrebbe non avere senso o dovrebbe essere 1.
+    if is_classification:
+        if all_labels_in_fold.size > 0:
+            n_classes = len(np.unique(all_labels_in_fold))
+            print(f"  Numero di classi trovate nei dati: {n_classes} (Fold {fold_id_desc})")
+            if n_classes < 2:
+                # Questo può accadere in subset molto piccoli o con dati sbilanciati
+                print(f"  ATTENZIONE (Fold {fold_id_desc}): Trovata meno di 2 classi nei dati binarizzati. Imposto n_classes=2.")
+                n_classes = 2 # Minimo 2 classi per classificazione
+        else:
+            print(f"  ATTENZIONE (Fold {fold_id_desc}): Dati di etichette binarizzate vuoti. Imposto n_classes=2.")
             n_classes = 2
-    else:
-        n_classes = 2
+    else: # Regression
+        n_classes = 1 # Output neuron for regression
 
-    y_train = torch.nn.functional.one_hot(torch.LongTensor(y_train_orig), n_classes).float()
-    y_val = torch.nn.functional.one_hot(torch.LongTensor(y_val_orig), n_classes).float()
-    
+    # Assicurati che y_train e y_val siano one-hot encoded SOLO per classificazione
+    if is_classification:
+        y_train = torch.nn.functional.one_hot(torch.LongTensor(y_train_orig), n_classes).float()
+        y_val = torch.nn.functional.one_hot(torch.LongTensor(y_val_orig), n_classes).float()
+    else:
+        # Per regressione, le label dovrebbero essere float e non one-hot
+        y_train = torch.Tensor(y_train_orig).float()
+        y_val = torch.Tensor(y_val_orig).float()
+        # Se le label hanno una dimensione in più (es. (N, 1)), appiattiscile a (N,)
+        if y_train.ndim > 1 and y_train.shape[1] == 1:
+            y_train = y_train.squeeze(1)
+        if y_val.ndim > 1 and y_val.shape[1] == 1:
+            y_val = y_val.squeeze(1)
+
+
     # --- 5. Definizione del Modello ---
     n_channels = X_train.shape[1]
     input_window_samples = X_train.shape[2]
@@ -108,6 +128,13 @@ def train_and_evaluate_model(config: dict, data_splits: dict, writer=None, skip_
     # --- 6. Definizione di Loss, Optimizer e Scheduler ---
     criterion_name = config.get('criterion_name', 'CrossEntropyLoss')
     optimizer_name = config.get('optimizer_name', 'Adam')
+    
+    # Se è classificazione e il criterio non è CrossEntropy, avvisa.
+    if is_classification and criterion_name != 'CrossEntropyLoss':
+        warnings.warn(f"Criterio '{criterion_name}' usato per classificazione. Si raccomanda 'CrossEntropyLoss'.")
+    elif not is_classification and criterion_name == 'CrossEntropyLoss':
+        warnings.warn(f"Criterio '{criterion_name}' usato per regressione. Si raccomanda 'L1Loss' o 'MSELoss'.")
+
     criterion = getattr(nn, criterion_name)()
     specific_optimizer_params = config.get('optimizer_params', {}).get(optimizer_name, {})
     optimizer = getattr(torch.optim, optimizer_name)(model.parameters(), lr=config['learning_rate'], **specific_optimizer_params)
@@ -120,9 +147,9 @@ def train_and_evaluate_model(config: dict, data_splits: dict, writer=None, skip_
     best_val_loss = float('inf')
     epoch_since_best = 0
     best_model_weights = copy.deepcopy(model.state_dict())
-    history = {'train_loss': [], 'val_loss': [], 'val_accuracy': []}
+    history = {'train_loss': [], 'val_loss': [], 'val_metrics': []} # 'val_accuracy' rinominato per generalità
     
-    print(f"Inizio training per fold {fold_id_desc} su {device} | Classificazione: {is_classification}")
+    print(f"Inizio training per fold {fold_id_desc} su {device} | Classificazione: {is_classification} | Classi: {n_classes}")
 
     batch_size = config['batch_size']
     num_epochs = config['epochs']
@@ -134,7 +161,18 @@ def train_and_evaluate_model(config: dict, data_splits: dict, writer=None, skip_
         
         for inputs, targets in train_loader:
             inputs, targets = inputs.to(device), targets.to(device)
+            # Per regressione, assicurati che i target abbiano la stessa dimensione delle predizioni (se necessario, squeeze)
+            if not is_classification and targets.ndim == 1:
+                targets = targets.unsqueeze(1) # Aggiunge dimensione per batch_size, 1
+
             outputs_train = model(inputs)
+            
+            # Se la loss function è MSELoss o L1Loss e l'output del modello ha una dimensione in più (es. (batch_size, 1)),
+            # assicurati che anche i target abbiano la stessa dimensione.
+            # Questo è più robusto se il modello di regressione emette (batch_size, 1)
+            if not is_classification and outputs_train.shape != targets.shape:
+                 targets = targets.view_as(outputs_train)
+
             loss = criterion(outputs_train, targets)
             optimizer.zero_grad()
             loss.backward()
@@ -145,38 +183,58 @@ def train_and_evaluate_model(config: dict, data_splits: dict, writer=None, skip_
         history['train_loss'].append(avg_training_loss)
 
         model.eval()
-        total_val_loss, val_correct, val_total = 0.0, 0, 0
+        total_val_loss = 0.0
+        all_val_preds = []
+        all_val_targets_orig = []
         val_loader = DataLoader(TensorDataset(torch.Tensor(X_val), y_val), batch_size=batch_size)
-        y_val_indices = torch.LongTensor(y_val_orig).to(device)
-
+        
         with torch.no_grad():
-            all_val_preds = []
-            all_val_targets = []
-            for inputs, targets_one_hot_val in val_loader:
-                inputs, targets_one_hot_val = inputs.to(device), targets_one_hot_val.to(device)
+            for inputs, targets_val in val_loader:
+                inputs, targets_val = inputs.to(device), targets_val.to(device)
+                
+                if not is_classification and targets_val.ndim == 1:
+                    targets_val = targets_val.unsqueeze(1)
+
                 outputs_val = model(inputs)
-                loss = criterion(outputs_val, targets_one_hot_val)
+
+                if not is_classification and outputs_val.shape != targets_val.shape:
+                    targets_val = targets_val.view_as(outputs_val)
+
+                loss = criterion(outputs_val, targets_val)
                 total_val_loss += loss.item()
                 
-                _, predicted_indices = torch.max(outputs_val.data, 1)
-                all_val_preds.append(predicted_indices)
-                
-                _, targets_indices_batch = torch.max(targets_one_hot_val, 1)
-                all_val_targets.append(targets_indices_batch)
+                if is_classification:
+                    _, predicted_indices = torch.max(outputs_val.data, 1)
+                    all_val_preds.append(predicted_indices)
+                    _, targets_indices_batch = torch.max(targets_val, 1)
+                    all_val_targets_orig.append(targets_indices_batch)
+                else: # Regression
+                    all_val_preds.append(outputs_val.cpu().numpy().flatten())
+                    all_val_targets_orig.append(targets_val.cpu().numpy().flatten())
+
 
             avg_val_loss = total_val_loss / len(val_loader) if len(val_loader) > 0 else 0.0
             history['val_loss'].append(avg_val_loss)
             
-            if all_val_preds:
-                all_val_preds = torch.cat(all_val_preds)
-                all_val_targets = torch.cat(all_val_targets)
-                val_correct = (all_val_preds == all_val_targets).sum().item()
-                val_total = all_val_targets.size(0)
-                accuracy = val_correct / val_total if val_total > 0 else 0.0
-            else:
-                accuracy = 0.0
-            history['val_accuracy'].append(accuracy)
+            # Calcolo delle metriche di validazione
+            if is_classification:
+                if all_val_preds:
+                    all_val_preds = torch.cat(all_val_preds).cpu().numpy()
+                    all_val_targets_orig = torch.cat(all_val_targets_orig).cpu().numpy()
+                    accuracy = accuracy_score(all_val_targets_orig, all_val_preds)
+                else:
+                    accuracy = 0.0
+                history['val_metrics'].append(accuracy) # Aggiungi come accuracy per classificazione
+            else: # Regression
+                if all_val_preds:
+                    all_val_preds = np.concatenate(all_val_preds)
+                    all_val_targets_orig = np.concatenate(all_val_targets_orig)
+                    r2 = r2_score(all_val_targets_orig, all_val_preds)
+                    history['val_metrics'].append(r2) # Aggiungi come R2 per regressione
+                else:
+                    history['val_metrics'].append(0.0) # O np.nan, a seconda della preferenza
 
+            # Early stopping basato sulla val_loss
             if avg_val_loss < best_val_loss:
                 best_val_loss = avg_val_loss
                 epoch_since_best = 0
@@ -188,13 +246,17 @@ def train_and_evaluate_model(config: dict, data_splits: dict, writer=None, skip_
                     break
             scheduler.step(avg_val_loss)
         
-        print(f"Epoch [{epoch+1}/{num_epochs}], Train Loss: {avg_training_loss:.6f}, Val Loss: {avg_val_loss:.6f}, Val Acc: {accuracy * 100:.2f}%")
+        current_metric_value = history['val_metrics'][-1] if history['val_metrics'] else 0.0
+        metric_name = "Val Acc" if is_classification else "Val R2"
+        print(f"Epoch [{epoch+1}/{num_epochs}], Train Loss: {avg_training_loss:.6f}, Val Loss: {avg_val_loss:.6f}, {metric_name}: {current_metric_value:.4f}")
 
         if writer:
             writer.add_scalar('Loss/Train', avg_training_loss, epoch)
             writer.add_scalar('Loss/Validation', avg_val_loss, epoch)
             if is_classification:
-                writer.add_scalar('Accuracy/Validation', accuracy, epoch)
+                writer.add_scalar('Accuracy/Validation', current_metric_value, epoch)
+            else:
+                writer.add_scalar('R2/Validation', current_metric_value, epoch) # Aggiungi R2 per regressione
             writer.add_scalar('LearningRate', optimizer.param_groups[0]['lr'], epoch)
 
     if not skip_test_evaluation:
@@ -208,27 +270,37 @@ def train_and_evaluate_model(config: dict, data_splits: dict, writer=None, skip_
 
         model.eval()
         test_y_pred_list = []
-        test_loader = DataLoader(TensorDataset(torch.Tensor(X_test)), batch_size=1)
+        # Per il test set, usa un batch_size più grande se la RAM lo permette, o rimane 1 per coerenza
+        test_loader = DataLoader(TensorDataset(torch.Tensor(X_test)), batch_size=config['batch_size']) # Usa batch_size del config
         with torch.no_grad():
             for inputs in test_loader:
                 inputs = inputs[0].to(device)
                 outputs_test = model(inputs)
-                test_y_pred_list.append(torch.argmax(outputs_test, dim=1).cpu().numpy().flatten())
+                if is_classification:
+                    test_y_pred_list.append(torch.argmax(outputs_test, dim=1).cpu().numpy().flatten())
+                else: # Regression
+                    test_y_pred_list.append(outputs_test.cpu().numpy().flatten())
                 
         y_pred = np.concatenate(test_y_pred_list) if test_y_pred_list else np.array([])
-        y_test_indices = y_test[:len(y_pred)]
+        y_test_final_eval = y_test[:len(y_pred)] # Assicurati che y_test abbia la stessa lunghezza delle predizioni
 
-        if y_test_indices.size == 0:
+        if y_test_final_eval.size == 0:
             print("  ATTENZIONE: Nessuna predizione generata per il test set. Metriche finali non calcolate.")
             return {}, history
 
         final_metrics = {}
-        final_metrics['accuracy'] = accuracy_score(y_test_indices, y_pred)
-        final_metrics['f1_score'] = f1_score(y_test_indices, y_pred, average='weighted', zero_division=0)
-        final_metrics['precision'] = precision_score(y_test_indices, y_pred, average='weighted', zero_division=0)
-        final_metrics['recall'] = recall_score(y_test_indices, y_pred, average='weighted', zero_division=0)
-        final_metrics['report'] = classification_report(y_test_indices, y_pred, zero_division=0, output_dict=True)
-        final_metrics['conf_matrix_data'] = (y_test_indices, y_pred)
+        if is_classification:
+            final_metrics['accuracy'] = accuracy_score(y_test_final_eval, y_pred)
+            final_metrics['f1_score'] = f1_score(y_test_final_eval, y_pred, average='weighted', zero_division=0)
+            final_metrics['precision'] = precision_score(y_test_final_eval, y_pred, average='weighted', zero_division=0)
+            final_metrics['recall'] = recall_score(y_test_final_eval, y_pred, average='weighted', zero_division=0)
+            final_metrics['report'] = classification_report(y_test_final_eval, y_pred, zero_division=0, output_dict=True)
+            final_metrics['conf_matrix_data'] = (y_test_final_eval, y_pred)
+        else: # Regression metrics
+            final_metrics['r2_score'] = r2_score(y_test_final_eval, y_pred)
+            final_metrics['mse'] = mean_squared_error(y_test_final_eval, y_pred)
+            final_metrics['mae'] = mean_absolute_error(y_test_final_eval, y_pred)
+
 
         print(final_metrics)
 
@@ -239,10 +311,16 @@ def train_and_evaluate_model(config: dict, data_splits: dict, writer=None, skip_
                 'model_type': config['model_type'],
                 'scaling': str(apply_scaling)
             }
-            final_metrics_for_hparams = {
-                'hparam/accuracy': final_metrics.get('accuracy', 0),
-                'hparam/f1_score': final_metrics.get('f1_score', 0)
-            }
+            if is_classification:
+                final_metrics_for_hparams = {
+                    'hparam/accuracy': final_metrics.get('accuracy', 0),
+                    'hparam/f1_score': final_metrics.get('f1_score', 0)
+                }
+            else: # Regression
+                final_metrics_for_hparams = {
+                    'hparam/r2_score': final_metrics.get('r2_score', 0),
+                    'hparam/mse': final_metrics.get('mse', 0)
+                }
             writer.add_hparams(hparams, final_metrics_for_hparams)
 
         return final_metrics, history

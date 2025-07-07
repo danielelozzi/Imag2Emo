@@ -34,6 +34,16 @@ def run_hpo_and_get_best_trial(
         hpo_training_config = copy.deepcopy(base_training_config)
         hpo_pipeline_config = copy.deepcopy(base_pipeline_config)
 
+        # Determina se è una classificazione a 4 classi per HPO
+        is_4_class_hpo = (label_metric == 'valence_arousal_4class')
+        if is_4_class_hpo:
+            hpo_training_config['is_classification'] = True # Forza a True se è 4 classi
+            # Il numero di classi sarà calcolato in train_and_evaluate_model
+            # Potrebbe essere necessario modificare n_outputs in model_params se il modello lo richiede esplicitamente
+        else:
+            hpo_training_config['is_classification'] = hpo_pipeline_config.get('binarized_threshold') is not None
+
+
         # --- Suggerimento dinamico degli iperparametri in base al model_type ---
         params_to_test = {
             'learning_rate': trial.suggest_float('learning_rate', 1e-5, 1e-2, log=True),
@@ -53,18 +63,18 @@ def run_hpo_and_get_best_trial(
         if model_type == 'EEGNetv4':
             hpo_pipeline_config['model_params']['EEGNetv4']['dropout'] = params_to_test['dropout']
             hpo_pipeline_config['model_params']['EEGNetv4']['F1'] = params_to_test['F1']
-            hpo_pipeline_config['model_params']['EEGNetv4']['F2'] = params_to_test['F1'] * hpo_pipeline_config['model_params']['EEGNetv4']['D']
+            hpo_pipeline_config['model_params']['EEGNetv4']['F2'] = hpo_pipeline_config['model_params']['EEGNetv4']['F1'] * hpo_pipeline_config['model_params']['EEGNetv4']['D']
 
         hpo_scenario = hpo_pipeline_config.get('hpo_training_scenario', 'k_simple')
         data_config = {
             'eeg_data_dir_raw': dataset_info['eeg_data_dir_raw'], 'labels_data_dir_base_raw': dataset_info['labels_base_dir_raw'],
             'slicing_config_dataset': dataset_info['slicing_config'], 'label_type': label_type, 'label_metric': label_metric,
             'training_scenario': hpo_scenario,
-            **hpo_pipeline_config
+            **hpo_pipeline_config # Passa tutti i parametri del pipeline, incluse le soglie di binarizzazione
         }
         
+        # is_classification è già impostato sopra in base a label_metric
         hpo_training_config.update({
-            'is_classification': data_config['binarized_threshold'] is not None,
             'sampling_rate': sfreq_for_training,
             'original_sampling_rate': original_sfreq,
             'apply_scaling': apply_scaling,
@@ -80,8 +90,10 @@ def run_hpo_and_get_best_trial(
                 hpo_training_config['fold_id'] = f"hpo_trial_{trial.number}_fold_{fold_idx}"
                 data_splits_for_hpo_fold = {'X_train': X_train, 'y_train': y_train, 'X_val': X_val, 'y_val': y_val, 'X_test': X_test, 'y_test': y_test}
                 
+                # Per HPO, passiamo is_classification True se usiamo la metrica a 4 classi
+                # Il numero di classi sarà derivato in train_and_evaluate_model in base alle labels
                 _, history = train_and_evaluate_model(hpo_training_config, data_splits_for_hpo_fold, skip_test_evaluation=True)
-                best_val_accuracy_this_fold = max(history['val_accuracy']) if 'val_accuracy' in history and history['val_accuracy'] else 0.0
+                best_val_accuracy_this_fold = max(history['val_metrics']) if 'val_metrics' in history and history['val_metrics'] else 0.0 # Changed to val_metrics
                 all_val_accuracies_for_trial.append(best_val_accuracy_this_fold)
             except StopIteration:
                 print(f"  Attenzione: Generatore di dati esaurito prima di {hpo_pipeline_config['k_simple_repetitions']} fold per il trial HPO {trial.number}. Interruzione.")
@@ -131,10 +143,10 @@ def main_orchestrator_function():
     # ############## INTERRUTTORI DI CONTROLLO DEL PIPELINE ##############
     # ##################################################################
     # Imposta a False per saltare la generazione dei segmenti se già presenti su disco
-    RUN_DISK_SEGMENTATION = False
+    RUN_DISK_SEGMENTATION = True
 
     # Imposta a False per saltare l'HPO e caricare i parametri da un file JSON
-    RUN_HPO = False
+    RUN_HPO = True 
     # ##################################################################
 
     # --- PARAMETRI GLOBALI E PERCORSI ---
@@ -175,27 +187,33 @@ def main_orchestrator_function():
     }
 
 
-
     # --- Informazioni Specifiche per Dataset ---
     dataset_specific_prep_info = {
         'DEAP_BDF': {
-            'subject_ids': [f"s{i:02d}" for i in range(1, 23)], 'public_labels': ['valence_pubblica', 'arousal_pubblica'],
-            'private_labels': ['valence', 'arousal'], 'sampling_rate': 128
+            'subject_ids': [f"s{i:02d}" for i in range(1, 23)],
+            'public_labels': ['valence_arousal_4class','valence_pubblica', 'arousal_pubblica'], # Aggiunta nuova metrica
+            'private_labels': ['valence_arousal_4class','valence', 'arousal'], # Aggiunta nuova metrica
+            'sampling_rate': 128
         },
         'DEAP': {
-            'subject_ids': [f"s{i:02d}" for i in range(1, 23)], 'public_labels': ['valence_pubblica', 'arousal_pubblica'],
-            'private_labels': ['valence_privata', 'arousal_privata'], 'sampling_rate': 500
+            'subject_ids': [f"s{i:02d}" for i in range(1, 23)],
+            'public_labels': ['valence_arousal_4class','valence_pubblica', 'arousal_pubblica'], # Aggiunta nuova metrica
+            'private_labels': ['valence_arousal_4class','valence_privata', 'arousal_privata'], # Aggiunta nuova metrica
+            'sampling_rate': 500
         },
         'GRAZ': {
-            'subject_ids': [f"P{i:03d}" for i in range(8, 28)], 'public_labels': ['valence_pubblico', 'arousal_pubblico'],
-            'private_labels': ['rate_valence_privata', 'rate_arousal_privato'], 'sampling_rate': 500
+            'subject_ids': [f"P{i:03d}" for i in range(8, 28)],
+            'public_labels': ['valence_arousal_4class','valence_pubblico', 'arousal_pubblico'], # Aggiunta nuova metrica
+            'private_labels': ['valence_arousal_4class','rate_valence_privata', 'rate_arousal_privato'], # Aggiunta nuova metrica
+            'sampling_rate': 500
         }
     }
 
     # --- Configurazione Generale del Training ---
     TRAINING_CONFIG = {
         'epochs': 500, 'batch_size': 32, 'learning_rate': 0.0001,
-        'early_stopping_patience': 50, 'factor_scheduler': 0.2, 'criterion_name': 'L1Loss',
+        'early_stopping_patience': 50, 'factor_scheduler': 0.2,
+        'criterion_name': 'L1Loss', # Per classificazione
         'optimizer_name': 'Adam',
         'optimizer_params': {
             'Adam': {'betas': (0.9, 0.999), 'eps': 1e-8, 'weight_decay': 1e-4},
@@ -205,12 +223,14 @@ def main_orchestrator_function():
     
     # --- Configurazione del Pipeline ---
     PIPELINE_CONFIG = {
-        'kfold_splits': 5, 'loso_val_subjects': 2, 'binarized_threshold': 5.0,
+        'kfold_splits': 5, 'loso_val_subjects': 2,
+        'binarized_threshold': {'valence': 5.0, 'arousal': 5.0}, # Nuova soglia per 4 classi o float per 2 classi
         'balancing_strategy': 'custom_undersampling', 'loso_test_limit': None, 
         'k_simple_repetitions': 5, 'global_shuffle_seed': 42,
-        'model_types': ['EEGNetv4'], 'apply_resample': True, 'new_sampling_rate': 128,
+        'model_types': ['EEGNetv4'], # Modelli da testare
+        'apply_resample': True, 'new_sampling_rate': 128, # Ricampionamento a 128 Hz
         'apply_butter_filter': True, 'butter_l_freq': 4.0, 'butter_h_freq': 64.0, 'butter_order': 4,
-        'hpo_subset_ratio': 0.3, 'hpo_n_trials': 5, 'hpo_training_scenario': 'k_simple',
+        'hpo_subset_ratio': 1, 'hpo_n_trials': 5, 'hpo_training_scenario': 'k_simple',
         'model_params': {
             'ContraNet': {
                 'kernLength': 250, 'poolLength': 8, 'numFilters': 16, 'projection_dim': 32,
@@ -230,6 +250,7 @@ def main_orchestrator_function():
         }
     }
     
+    # Esempio: Eseguire solo EEGNetv4
     PIPELINE_CONFIG['model_types'] = ['EEGNetv4']
 
     if PIPELINE_CONFIG.get('apply_resample', False):
@@ -239,8 +260,9 @@ def main_orchestrator_function():
         print(f"\n--- Parametro 'kernel_length' di EEGNetv4 aggiornato dinamicamente a: {PIPELINE_CONFIG['model_params']['EEGNetv4']['kernel_length']} ---")
         target_patch_length_for_eegvit = 16
         calculated_num_patches_eegvit = new_sfreq // target_patch_length_for_eegvit
-        if calculated_num_patches_eegvit == 0 or new_sfreq % calculated_num_patches_eegvit != 0:
-            calculated_num_patches_eegvit = 8 if new_sfreq == 128 else 1
+        # Aggiustamento per assicurare che num_patches sia un numero intero e non zero
+        if calculated_num_patches_eegvit == 0 or new_sfreq % target_patch_length_for_eegvit != 0:
+            calculated_num_patches_eegvit = max(1, new_sfreq // 16) # Fallback più robusto
             print(f"  ATTENZIONE: num_patches per EEGViT non è un divisore ideale per {new_sfreq}. Usando {calculated_num_patches_eegvit}.")
         PIPELINE_CONFIG['model_params']['EEGViT']['num_patches'] = calculated_num_patches_eegvit
         print(f"\n--- Parametro 'num_patches' di EEGViT aggiornato dinamicamente a: {PIPELINE_CONFIG['model_params']['EEGViT']['num_patches']} ---")
@@ -251,19 +273,46 @@ def main_orchestrator_function():
         'DEAP_BDF': {
             'eeg_data_dir_raw': os.path.join(NPY_TRAINING_OUTPUT_BASE_PATH_FOR_DISK_SAVE, "DEAP_BDF_NPY", "EEG"),
             'labels_base_dir_raw': os.path.join(NPY_TRAINING_OUTPUT_BASE_PATH_FOR_DISK_SAVE, "DEAP_BDF_NPY", "LABEL"),
-            'public_labels': ['valence_pubblica', 'arousal_pubblica'], 'private_labels': ['valence', 'arousal'],
+            'public_labels': ['valence_pubblica', 'arousal_pubblica', 'valence_arousal_4class'],
+            'private_labels': ['valence', 'arousal', 'valence_arousal_4class'],
             'sampling_rate': 128, 'slicing_config': DEAP_BDF_TRAINING_PREP_CONFIG, 'apply_scaling_options': [False]
         },
         'DEAP': {
             'eeg_data_dir_raw': os.path.join(NPY_TRAINING_OUTPUT_BASE_PATH_FOR_DISK_SAVE, "DEAP_NPY", "EEG"),
             'labels_base_dir_raw': os.path.join(NPY_TRAINING_OUTPUT_BASE_PATH_FOR_DISK_SAVE, "DEAP_NPY", "LABEL"),
-            'public_labels': ['valence_pubblica', 'arousal_pubblica'], 'private_labels': ['valence_privata', 'arousal_privata'],
+            'public_labels': ['valence_pubblica', 'arousal_pubblica', 'valence_arousal_4class'],
+            'private_labels': ['valence_privata', 'arousal_privata', 'valence_arousal_4class'],
             'sampling_rate': 500, 'slicing_config': DEAP_TRAINING_PREP_CONFIG, 'apply_scaling_options': [True]
         },
         'GRAZ': {
             'eeg_data_dir_raw': os.path.join(NPY_TRAINING_OUTPUT_BASE_PATH_FOR_DISK_SAVE, "GRAZ_NPY", "EEG"),
             'labels_base_dir_raw': os.path.join(NPY_TRAINING_OUTPUT_BASE_PATH_FOR_DISK_SAVE, "GRAZ_NPY", "LABEL"),
-            'public_labels': ['valence_pubblico', 'arousal_pubblico'], 'private_labels': ['rate_valence_privata', 'rate_arousal_privato'],
+            'public_labels': ['valence_pubblico', 'arousal_pubblico', 'valence_arousal_4class'],
+            'private_labels': ['rate_valence_privata', 'rate_arousal_privato', 'valence_arousal_4class'],
+            'sampling_rate': 500, 'slicing_config': GRAZ_TRAINING_PREP_CONFIG, 'apply_scaling_options': [True]
+        }
+    }
+
+    datasets_to_train = {
+        'DEAP_BDF': {
+            'eeg_data_dir_raw': os.path.join(NPY_TRAINING_OUTPUT_BASE_PATH_FOR_DISK_SAVE, "DEAP_BDF_NPY", "EEG"),
+            'labels_base_dir_raw': os.path.join(NPY_TRAINING_OUTPUT_BASE_PATH_FOR_DISK_SAVE, "DEAP_BDF_NPY", "LABEL"),
+            'public_labels': ['valence_arousal_4class'],
+            'private_labels': ['valence_arousal_4class'],
+            'sampling_rate': 128, 'slicing_config': DEAP_BDF_TRAINING_PREP_CONFIG, 'apply_scaling_options': [False]
+        },
+        'DEAP': {
+            'eeg_data_dir_raw': os.path.join(NPY_TRAINING_OUTPUT_BASE_PATH_FOR_DISK_SAVE, "DEAP_NPY", "EEG"),
+            'labels_base_dir_raw': os.path.join(NPY_TRAINING_OUTPUT_BASE_PATH_FOR_DISK_SAVE, "DEAP_NPY", "LABEL"),
+            'public_labels': ['valence_arousal_4class'],
+            'private_labels': ['valence_arousal_4class'],
+            'sampling_rate': 500, 'slicing_config': DEAP_TRAINING_PREP_CONFIG, 'apply_scaling_options': [True]
+        },
+        'GRAZ': {
+            'eeg_data_dir_raw': os.path.join(NPY_TRAINING_OUTPUT_BASE_PATH_FOR_DISK_SAVE, "GRAZ_NPY", "EEG"),
+            'labels_base_dir_raw': os.path.join(NPY_TRAINING_OUTPUT_BASE_PATH_FOR_DISK_SAVE, "GRAZ_NPY", "LABEL"),
+            'public_labels': ['valence_arousal_4class'],
+            'private_labels': ['valence_arousal_4class'],
             'sampling_rate': 500, 'slicing_config': GRAZ_TRAINING_PREP_CONFIG, 'apply_scaling_options': [True]
         }
     }
@@ -321,8 +370,18 @@ def main_orchestrator_function():
             all_best_trials_for_dataset = []
 
             for label_type in ['PRIVATE', 'PUBLIC']:
-                if not dataset_info[f'{label_type.lower()}_labels']: continue
+                # Itera su tutte le label, inclusa la nuova 'valence_arousal_4class'
                 for label_metric in dataset_info[f'{label_type.lower()}_labels']:
+                    # Solo esegui HPO per le metriche che sono effettivamente classificazione
+                    # Per 4 classi, is_classification è sempre True
+                    # Per le singole label (valence, arousal), dipende dal binarized_threshold
+                    
+                    # Se non è una metrica di classificazione (e.g., 'valence', 'arousal' senza binarizzazione), salta l'HPO per ora
+                    # O aggiungi una logica per HPO di regressione se necessario.
+                    if label_metric != 'valence_arousal_4class' and PIPELINE_CONFIG.get('binarized_threshold') is None:
+                        print(f"  Saltando HPO per {label_metric} in modalità regressione. HPO supportato solo per classificazione o 'valence_arousal_4class'.")
+                        continue
+
                     model_types_to_run = PIPELINE_CONFIG['model_types'] if isinstance(PIPELINE_CONFIG['model_types'], list) else [PIPELINE_CONFIG['model_types']]
                     for model_type in model_types_to_run:
                         for apply_scaling in dataset_info['apply_scaling_options']:
@@ -331,13 +390,25 @@ def main_orchestrator_function():
                                 TRAINING_CONFIG, PIPELINE_CONFIG, sfreq_for_training, original_sfreq, dataset_info,
                                 TRAINING_RESULTS_OUTPUT_BASE_PATH
                             )
+                            # Aggiungi la metrica di riferimento al trial per il logging
+                            best_trial_for_combo.set_user_attr("label_metric", label_metric) 
                             all_best_trials_for_dataset.append(best_trial_for_combo)
 
             if all_best_trials_for_dataset:
+                # Trova il trial con la massima accuratezza di validazione tra tutti i label_metric per il dataset
                 overall_best_trial = max(all_best_trials_for_dataset, key=lambda trial: trial.value)
-                optimized_params_store_per_dataset[dataset_name] = overall_best_trial.params
+                # Salva i parametri del miglior trial per il dataset, indipendentemente dalla metrica specifica
+                # Questo potrebbe essere problematico se i parametri ottimali variano molto tra le metriche
+                # Considera di salvare i best_params per ogni combinazione (dataset, label_type, label_metric, model_type, scaling)
+                # Per semplicità, qui salviamo il "migliore assoluto" per il dataset.
+                optimized_params_store_per_dataset[dataset_name] = {
+                    'params': overall_best_trial.params,
+                    'metric': overall_best_trial.user_attrs.get('label_metric', 'N/A'), # Salva quale metrica ha generato il best trial
+                    'value': overall_best_trial.value
+                }
                 print(f"\n\n===== MIGLIORI IPERPARAMETRI COMPLESSIVI PER IL DATASET '{dataset_name}' =====")
                 print(f"  Trovati dal trial con la più alta validation accuracy: {overall_best_trial.value:.4f}")
+                print(f"  Per metrica: {optimized_params_store_per_dataset[dataset_name]['metric']}")
                 print(f"  Parametri: {overall_best_trial.params}")
                 print("=" * (60 + len(dataset_name)))
             else:
@@ -346,16 +417,26 @@ def main_orchestrator_function():
         
         # Salva i parametri ottimizzati in un file JSON pulito per un facile riutilizzo
         print(f"\n[RIEPILOGO HPO] Salvataggio dei migliori iperparametri trovati in: {OPTIMIZED_PARAMS_JSON_PATH}")
+        # Converti il dizionario complex in una versione serializzabile (estraendo solo 'params')
+        serializable_optimized_params = {
+            ds_name: data.get('params', {}) for ds_name, data in optimized_params_store_per_dataset.items()
+        }
         with open(OPTIMIZED_PARAMS_JSON_PATH, 'w') as f:
-            json.dump(optimized_params_store_per_dataset, f, indent=4)
+            json.dump(serializable_optimized_params, f, indent=4)
     
     else: # Se RUN_HPO è False, carica i parametri
         print("\n\n##### Fase 1: HPO Saltata. Caricamento parametri ottimizzati... #####")
         try:
             with open(OPTIMIZED_PARAMS_JSON_PATH, 'r') as f:
-                optimized_params_store_per_dataset = json.load(f)
+                optimized_params_from_file = json.load(f)
+            # Ristruttura per coerenza con il formato generato da HPO se necessario
+            optimized_params_store_per_dataset = {
+                ds_name: {'params': params, 'metric': 'Loaded', 'value': 0.0} # Placeholder values
+                for ds_name, params in optimized_params_from_file.items()
+            }
+
             print(f"  Parametri caricati con successo da: {OPTIMIZED_PARAMS_JSON_PATH}")
-            print("  Parametri caricati:", json.dumps(optimized_params_store_per_dataset, indent=2))
+            print("  Parametri caricati:", json.dumps(optimized_params_from_file, indent=2))
         except FileNotFoundError:
             print(f"  ATTENZIONE: File dei parametri '{OPTIMIZED_PARAMS_JSON_PATH}' non trovato.")
             print("  Il training procederà con i parametri di default definiti nella configurazione.")
@@ -372,40 +453,79 @@ def main_orchestrator_function():
         original_sfreq = dataset_info['sampling_rate']
         sfreq_for_training = sfreq_for_training_global if sfreq_for_training_global is not None else original_sfreq
         dataset_info['slicing_config']['sampling_rate'] = original_sfreq
-        best_params = optimized_params_store_per_dataset.get(dataset_name, {})
+        
+        # Recupera i parametri ottimizzati (se disponibili) per il dataset corrente
+        best_params_for_dataset = optimized_params_store_per_dataset.get(dataset_name, {}).get('params', {})
         
         for label_type in ['PRIVATE', 'PUBLIC']:
+            # Itera su tutte le label, inclusa la nuova 'valence_arousal_4class'
             for label_metric in dataset_info[f'{label_type.lower()}_labels']:
-                for scenario in ['k_simple', 'kfold', 'loso']:
-                    model_types_to_run = PIPELINE_CONFIG['model_types'] if isinstance(PIPELINE_CONFIG['model_types'], list) else [PIPELINE_CONFIG['model_types']]
-                    for model_type in model_types_to_run:
-                        for apply_scaling in dataset_info['apply_scaling_options']:
-                            current_training_config = copy.deepcopy(TRAINING_CONFIG)
-                            current_pipeline_config = copy.deepcopy(PIPELINE_CONFIG)
-                            current_pipeline_config['hpo_subset_ratio'] = 1.0
+                # Determina is_classification e n_classes_expected per il run attuale
+                is_classification_run = False
+                n_classes_expected = 2 # Default per binarizzazione singola
+                if label_metric == 'valence_arousal_4class':
+                    is_classification_run = True
+                    n_classes_expected = 4
+                    # Assicurati che il criterio sia CrossEntropyLoss per 4 classi
+                    current_training_config = copy.deepcopy(TRAINING_CONFIG) # Copia qui per non modificare il globale
+                    current_training_config['criterion_name'] = 'CrossEntropyLoss'
+                elif isinstance(PIPELINE_CONFIG.get('binarized_threshold'), (float, int)):
+                    is_classification_run = True
+                    n_classes_expected = 2
+                    current_training_config = copy.deepcopy(TRAINING_CONFIG) # Copia qui
+                    current_training_config['criterion_name'] = 'L1Loss' # Assicurati che sia classification loss
+                else: # Regressione
+                    is_classification_run = False
+                    current_training_config = copy.deepcopy(TRAINING_CONFIG) # Copia qui
+                    current_training_config['criterion_name'] = 'L1Loss' # O MSELoss, a seconda della preferenza
 
-                            combination_key = (dataset_name, label_type, label_metric, scenario, model_type, apply_scaling)
-                            if best_params:
-                                print(f"\n[APPLICAZIONE PARAMETRI OTTIMIZZATI] per {combination_key}:")
-                                if 'learning_rate' in best_params:
-                                    current_training_config['learning_rate'] = best_params['learning_rate']
-                                    print(f"  -> LR: {best_params['learning_rate']}")
-                                if 'weight_decay' in best_params:
-                                    current_training_config['optimizer_params']['Adam']['weight_decay'] = best_params['weight_decay']
-                                    print(f"  -> Weight Decay: {best_params['weight_decay']}")
-                                
-                                model_to_tune = 'EEGNetv4'
-                                if 'dropout' in best_params:
-                                    current_pipeline_config['model_params'][model_to_tune]['dropout'] = best_params['dropout']
-                                    print(f"  -> Dropout ({model_to_tune}): {best_params['dropout']}")
-                                if 'F1' in best_params:
-                                    current_pipeline_config['model_params'][model_to_tune]['F1'] = best_params['F1']
+
+                model_types_to_run = PIPELINE_CONFIG['model_types'] if isinstance(PIPELINE_CONFIG['model_types'], list) else [PIPELINE_CONFIG['model_types']]
+                for model_type in model_types_to_run:
+                    for apply_scaling in dataset_info['apply_scaling_options']:
+                        # Ora current_training_config è già copiato e ha criterion_name impostato correttamente
+                        current_pipeline_config = copy.deepcopy(PIPELINE_CONFIG)
+                        current_pipeline_config['hpo_subset_ratio'] = 1.0 # Usa il dataset completo per il training finale
+
+                        if best_params_for_dataset:
+                            print(f"\n[APPLICAZIONE PARAMETRI OTTIMIZZATI] per {dataset_name} (da HPO precedente):")
+                            if 'learning_rate' in best_params_for_dataset:
+                                current_training_config['learning_rate'] = best_params_for_dataset['learning_rate']
+                                print(f"  -> LR: {best_params_for_dataset['learning_rate']}")
+                            if 'weight_decay' in best_params_for_dataset:
+                                current_training_config['optimizer_params']['Adam']['weight_decay'] = best_params_for_dataset['weight_decay']
+                                print(f"  -> Weight Decay: {best_params_for_dataset['weight_decay']}")
+                            
+                            model_to_tune = 'EEGNetv4' # Questo presuppone che HPO sia stato eseguito per EEGNetv4
+                            if model_to_tune in current_pipeline_config['model_params']:
+                                if 'dropout' in best_params_for_dataset:
+                                    current_pipeline_config['model_params'][model_to_tune]['dropout'] = best_params_for_dataset['dropout']
+                                    print(f"  -> Dropout ({model_to_tune}): {best_params_for_dataset['dropout']}")
+                                if 'F1' in best_params_for_dataset:
+                                    current_pipeline_config['model_params'][model_to_tune]['F1'] = best_params_for_dataset['F1']
                                     current_pipeline_config['model_params'][model_to_tune]['F2'] = current_pipeline_config['model_params'][model_to_tune]['F1'] * current_pipeline_config['model_params'][model_to_tune]['D']
                                     print(f"  -> F1/F2 ({model_to_tune}) aggiornati.")
-                            else:
-                                print(f"\n[INFO] Nessun parametro ottimizzato trovato per {combination_key}. Verranno usati i parametri di default.")
+                        else:
+                            print(f"\n[INFO] Nessun parametro ottimizzato trovato per {dataset_name}. Verranno usati i parametri di default.")
 
-                            scaling_str = "scaling_ON" if apply_scaling else "scaling_OFF"
+                        # Sovrascrivi il binarized_threshold nel pipeline_config corrente
+                        if label_metric == 'valence_arousal_4class':
+                            current_pipeline_config['binarized_threshold'] = (5.0, 5.0) # Usa le soglie appropriate
+                        elif is_classification_run: # Se è una singola metrica binarizzata
+                            current_pipeline_config['binarized_threshold'] = 5.0 # O quella che era la soglia originale
+                        else: # Regressione
+                            current_pipeline_config['binarized_threshold'] = None
+                        
+                        scaling_str = "scaling_ON" if apply_scaling else "scaling_OFF"
+                        
+                        # Definizione della variabile 'scenario' qui
+                        # Itera su tutti gli scenari definiti nella PIPELINE_CONFIG
+                        for scenario in ['k_simple', 'kfold', 'loso']: # Definizione esplicita di scenario qui
+                            # Questo loop è stato spostato per risolvere l'errore
+                            # e per assicurare che 'scenario' sia definito
+                            # per ogni combinazione di (dataset, label_type, label_metric, model_type, apply_scaling)
+                            # Questo significa che ogni combinazione di label/modello verrà eseguita per tutti e 3 gli scenari.
+
                             run_name = f"[{dataset_name}]-[{label_type}]-[{label_metric}]-[{scenario}]-[{model_type}]-[{scaling_str}]"
                             print(f"\n>>>>>> INIZIO SCENARIO: {run_name} <<<<<<")
 
@@ -415,10 +535,17 @@ def main_orchestrator_function():
                             data_config = {
                                 'eeg_data_dir_raw': dataset_info['eeg_data_dir_raw'], 'labels_data_dir_base_raw': dataset_info['labels_base_dir_raw'],
                                 'slicing_config_dataset': dataset_info['slicing_config'], 'label_type': label_type, 'label_metric': label_metric,
-                                'training_scenario': scenario, **current_pipeline_config
+                                'training_scenario': scenario, **current_pipeline_config # Passa il binarized_threshold aggiornato
                             }
                             
-                            current_training_config.update({'is_classification': data_config['binarized_threshold'] is not None, 'sampling_rate': sfreq_for_training, 'original_sampling_rate': original_sfreq, 'apply_scaling': apply_scaling, 'model_type': model_type})
+                            current_training_config.update({
+                                'is_classification': is_classification_run,
+                                'n_classes': n_classes_expected, # Passa il numero di classi atteso al training
+                                'sampling_rate': sfreq_for_training,
+                                'original_sampling_rate': original_sfreq,
+                                'apply_scaling': apply_scaling,
+                                'model_type': model_type
+                            })
 
                             try:
                                 fold_results, fold_histories, fold_reports = [], [], []
@@ -438,6 +565,7 @@ def main_orchestrator_function():
                                             json.dump({'test_subject': info.get('test_subject'), 'validation_subjects': info.get('val_subjects'), 'training_subjects': info.get('train_subjects')}, f_json, indent=4)
 
                                     if current_training_config['is_classification']:
+                                        # Plot per la distribuzione delle 4 classi
                                         plot_class_distribution(y_train, f"{run_name} Train Fold {fold_id}", os.path.join(output_dir, f"dist_train_fold_{fold_id}.png"))
                                         plot_class_distribution(y_val, f"{run_name} Val Fold {fold_id}", os.path.join(output_dir, f"dist_val_fold_{fold_id}.png"))
                                         plot_class_distribution(y_test, f"{run_name} Test Fold {fold_id}", os.path.join(output_dir, f"dist_test_fold_{fold_id}.png"))
@@ -476,11 +604,13 @@ def main_orchestrator_function():
                                     plot_average_curves(fold_histories, 'train_loss', run_name, os.path.join(output_dir, "avg_train_loss.png"))
                                     plot_average_curves(fold_histories, 'val_loss', run_name, os.path.join(output_dir, "avg_val_loss.png"))
                                     if current_training_config['is_classification']:
-                                        plot_average_curves(fold_histories, 'val_accuracy', run_name, os.path.join(output_dir, "avg_val_accuracy.png"))
+                                        plot_average_curves(fold_histories, 'val_metrics', run_name, os.path.join(output_dir, "avg_val_accuracy.png")) # Changed to val_metrics
                             except FileNotFoundError as e:
                                 print(f"ERRORE File Non Trovato per {run_name}: {e}. Saltando.")
                             except Exception as e:
                                 print(f"ERRORE Generico durante il training/valutazione per {run_name}: {e}. Saltando.")
+                                import traceback
+                                traceback.print_exc() # Stampa la traceback per debug
 
     print("\n--- Pipeline di training e reporting completato. ---")
 

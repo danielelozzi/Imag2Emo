@@ -73,13 +73,73 @@ def _custom_undersample(
     print("--- Bilanciamento Custom Undersampling Completato ---")
     return balanced_samples, balanced_labels
 
-def _binarize_labels(labels: np.ndarray, threshold: float) -> np.ndarray:
-    """Binarizza le etichette basandosi su una soglia."""
-    if labels.ndim > 1: # Se per caso fossero one-hot, anche se non previsto qui
-        print("Attenzione: _binarize_labels ha ricevuto label multidimensionali. Tentativo di usare argmax.")
-        labels = np.argmax(labels, axis=1)
-    labels = np.round(labels) # Label arrotondate all'intero più vicino prima di essere binarizzate per non perdere precisione
-    return (labels >= threshold).astype(np.int_)
+def _binarize_labels(labels: np.ndarray, threshold: Any) -> np.ndarray:
+    """
+    Binarizza le etichette.
+    Se threshold è un float, binarizza un array 1D in 2 classi.
+    Se threshold è una tupla/lista (val_thresh, aro_thresh) o un dizionario
+    {'valence': val_thresh, 'arousal': aro_thresh}, binarizza un array 2D
+    (valence, arousal) in 4 classi (HVHA, HVLA, LVHA, LVLA).
+
+    Class Mapping for 4 classes:
+    HVHA: 0 (Valence >= threshold_val, Arousal >= threshold_aro)
+    HVLA: 1 (Valence >= threshold_val, Arousal <  threshold_aro)
+    LVHA: 2 (Valence <  threshold_val, Arousal >= threshold_aro)
+    LVLA: 3 (Valence <  threshold_val, Arousal <  threshold_aro)
+    """
+    if isinstance(threshold, (float, int)):
+        # Comportamento esistente per binarizzazione a 2 classi
+        if labels.ndim > 1:
+            # Se per caso le labels 1D sono caricate come [[valore], [valore]], le appiattiamo
+            if labels.shape[1] == 1:
+                labels = labels.flatten()
+            else:
+                # Caso in cui sia un one-hot encoding o labels multidimensionali non previste
+                print("Attenzione: _binarize_labels ha ricevuto label multidimensionali per soglia singola. Tentativo di usare argmax.")
+                labels = np.argmax(labels, axis=1) # Se le label sono one-hot, prendi l'indice della classe
+        labels_rounded = np.round(labels) # Label arrotondate all'intero più vicino
+        return (labels_rounded >= threshold).astype(np.int_)
+    
+    # NUOVA CONDIZIONE: se threshold è un dizionario e contiene le chiavi 'valence' e 'arousal'
+    elif isinstance(threshold, dict) and 'valence' in threshold and 'arousal' in threshold:
+        val_thresh = threshold['valence']
+        aro_thresh = threshold['arousal']
+    # CONDIZIONE ESISTENTE: se threshold è una tupla/lista di lunghezza 2
+    elif isinstance(threshold, (tuple, list)) and len(threshold) == 2:
+        val_thresh, aro_thresh = threshold
+    else:
+        raise ValueError(f"Tipo di soglia di binarizzazione non supportato: {type(threshold)}. Deve essere float/int, una tupla/lista di 2 float/int, o un dizionario con chiavi 'valence' e 'arousal'.")
+    
+    # Logica comune per binarizzazione a 4 classi (raggiunta sia da tupla/lista che da dizionario)
+    if labels.ndim != 2 or labels.shape[1] != 2:
+        raise ValueError(
+            f"Per la binarizzazione a 4 classi, le 'labels' devono essere un array 2D con 2 colonne (Valence, Arousal), "
+            f"ma la shape fornita è {labels.shape}."
+        )
+    
+    valence_labels = np.round(labels[:, 0]) # Prima colonna è Valence
+    arousal_labels = np.round(labels[:, 1]) # Seconda colonna è Arousal
+
+    # Inizializza l'array delle nuove label a 4 classi
+    binned_labels = np.zeros(labels.shape[0], dtype=np.int_)
+
+    # HVHA: Valence >= val_thresh, Arousal >= aro_thresh -> Classe 0
+    binned_labels[(valence_labels >= val_thresh) & (arousal_labels >= aro_thresh)] = 0
+    
+    # HVLA: Valence >= val_thresh, Arousal < aro_thresh -> Classe 1
+    binned_labels[(valence_labels >= val_thresh) & (arousal_labels < aro_thresh)] = 1
+    
+    # LVHA: Valence < val_thresh, Arousal >= aro_thresh -> Classe 2
+    binned_labels[(valence_labels < val_thresh) & (arousal_labels >= aro_thresh)] = 2
+    
+    # LVLA: Valence < val_thresh, Arousal < aro_thresh -> Classe 3
+    binned_labels[(valence_labels < val_thresh) & (arousal_labels < aro_thresh)] = 3
+    
+    print(f"Binarizzazione a 4 classi (Valence >={val_thresh}, Arousal >={aro_thresh}) completata.")
+    unique_binned, counts_binned = np.unique(binned_labels, return_counts=True)
+    print(f"  Nuova distribuzione classi: {dict(zip(unique_binned, counts_binned))}")
+
+    return binned_labels
 
 def _load_all_subject_data_segmented_concatenated(config: dict) -> Tuple[np.ndarray, np.ndarray, Dict[str, Tuple[int, int]], List[str]]:
     """
@@ -103,44 +163,93 @@ def _load_all_subject_data_segmented_concatenated(config: dict) -> Tuple[np.ndar
     labels_data_dir = os.path.join(labels_data_dir_base_segmented, label_type_upper)
 
     eeg_files_paths = sorted([os.path.join(eeg_data_dir_segmented, f) for f in os.listdir(eeg_data_dir_segmented) if f.endswith('_eeg.npy')])
-    label_files_paths = sorted([
-        os.path.join(labels_data_dir, f)
-        for f in os.listdir(labels_data_dir)
-        if f.endswith(f'_{label_metric}.npy')
-    ])
+    
+    # Gestione speciale per la metrica "valence_arousal_4class"
+    if label_metric == 'valence_arousal_4class':
+        # Dobbiamo caricare sia valence che arousal
+        valence_label_name = 'valence_pubblica' if label_type_upper == 'PUBLIC' else 'valence' if label_type_upper == 'PRIVATE' and 'DEAP_BDF' in config['eeg_data_dir_raw'] else 'valence_privata'
+        arousal_label_name = 'arousal_pubblica' if label_type_upper == 'PUBLIC' else 'arousal' if label_type_upper == 'PRIVATE' and 'DEAP_BDF' in config['eeg_data_dir_raw'] else 'arousal_privata'
+        
+        # Per GRAZ le etichette private sono 'rate_valence_privata' e 'rate_arousal_privato'
+        if 'GRAZ' in config['eeg_data_dir_raw'] and label_type_upper == 'PRIVATE':
+            valence_label_name = 'rate_valence_privata'
+            arousal_label_name = 'rate_arousal_privato'
+        elif 'GRAZ' in config['eeg_data_dir_raw'] and label_type_upper == 'PUBLIC':
+            valence_label_name = 'valence_pubblico'
+            arousal_label_name = 'arousal_pubblico'
 
-    if not eeg_files_paths:
-        raise FileNotFoundError(f"Nessun file EEG .npy segmentato trovato in {eeg_data_dir_segmented}")
-    if not label_files_paths:
-        raise FileNotFoundError(f"Nessun file label .npy segmentato per la metrica '{label_metric}' trovato in {labels_data_dir}")
+        valence_files_paths = sorted([os.path.join(labels_data_dir, f) for f in os.listdir(labels_data_dir) if f.endswith(f'_{valence_label_name}.npy')])
+        arousal_files_paths = sorted([os.path.join(labels_data_dir, f) for f in os.listdir(labels_data_dir) if f.endswith(f'_{arousal_label_name}.npy')])
 
-    subject_map = {}
-    for eeg_file in eeg_files_paths:
-        sub_id = os.path.basename(eeg_file).split('_')[0]
-        if sub_id not in subject_map: subject_map[sub_id] = {}
-        subject_map[sub_id]['eeg_path'] = eeg_file
+        label_files_paths_map = {}
+        for vp_file in valence_files_paths:
+            sub_id = os.path.basename(vp_file).replace(f'_{valence_label_name}.npy', '')
+            if sub_id not in label_files_paths_map: label_files_paths_map[sub_id] = {}
+            label_files_paths_map[sub_id]['valence_path'] = vp_file
+        for ap_file in arousal_files_paths:
+            sub_id = os.path.basename(ap_file).replace(f'_{arousal_label_name}.npy', '')
+            if sub_id not in label_files_paths_map: label_files_paths_map[sub_id] = {}
+            label_files_paths_map[sub_id]['arousal_path'] = ap_file
 
-    for label_file in label_files_paths:
-        sub_id = os.path.basename(label_file).replace(f'_{label_metric}.npy', '')
-        if sub_id not in subject_map:
-            subject_map[sub_id] = {}
-        subject_map[sub_id]['label_path'] = label_file
+        # Ora creiamo la subject_map combinando EEG e Label (Valence + Arousal)
+        subject_map = {}
+        for eeg_file in eeg_files_paths:
+            sub_id = os.path.basename(eeg_file).split('_')[0]
+            if sub_id not in subject_map: subject_map[sub_id] = {}
+            subject_map[sub_id]['eeg_path'] = eeg_file
+        
+        for sub_id, paths in label_files_paths_map.items():
+            if sub_id in subject_map:
+                subject_map[sub_id].update(paths)
+
+        valid_subject_ids = sorted([
+            s for s, files in subject_map.items()
+            if 'eeg_path' in files and 'valence_path' in files and 'arousal_path' in files
+        ])
+
+    else:
+        # Logica esistente per singole metriche (valence, arousal, happiness, etc.)
+        label_files_paths = sorted([
+            os.path.join(labels_data_dir, f)
+            for f in os.listdir(labels_data_dir)
+            if f.endswith(f'_{label_metric}.npy')
+        ])
+
+        subject_map = {}
+        for eeg_file in eeg_files_paths:
+            sub_id = os.path.basename(eeg_file).split('_')[0]
+            if sub_id not in subject_map: subject_map[sub_id] = {}
+            subject_map[sub_id]['eeg_path'] = eeg_file
+
+        for label_file in label_files_paths:
+            sub_id = os.path.basename(label_file).replace(f'_{label_metric}.npy', '')
+            if sub_id not in subject_map:
+                subject_map[sub_id] = {}
+            subject_map[sub_id]['label_path'] = label_file
+        
+        valid_subject_ids = sorted([
+            s for s, files in subject_map.items()
+            if 'eeg_path' in files and 'label_path' in files
+        ])
+
+
+    if not valid_subject_ids:
+        raise ValueError(f"Nessun soggetto trovato con dati EEG e label segmentati corrispondenti per la metrica '{label_metric}'. Controllare i path: EEG dir '{eeg_data_dir_segmented}', Label dir '{labels_data_dir}'.")
     
     all_eeg_data_list, all_labels_data_list = [], []
     subject_indices_map = {}
     current_idx_start = 0
 
-    valid_subject_ids = sorted([
-        s for s, files in subject_map.items()
-        if 'eeg_path' in files and 'label_path' in files
-    ])
-
-    if not valid_subject_ids:
-        raise ValueError(f"Nessun soggetto trovato con dati EEG e label segmentati corrispondenti per la metrica '{label_metric}'. Controllare i path: EEG dir '{eeg_data_dir_segmented}', Label dir '{labels_data_dir}'.")
-
     for sub_id in valid_subject_ids:
         eeg = np.load(subject_map[sub_id]['eeg_path']).astype(np.float32)
-        labels = np.load(subject_map[sub_id]['label_path']).astype(np.float32)
+        
+        if label_metric == 'valence_arousal_4class':
+            valence_labels = np.load(subject_map[sub_id]['valence_path']).astype(np.float32)
+            arousal_labels = np.load(subject_map[sub_id]['arousal_path']).astype(np.float32)
+            # Combina valence e arousal in un array 2D per ogni sample
+            labels = np.stack((valence_labels, arousal_labels), axis=1) # Shape (num_samples, 2)
+        else:
+            labels = np.load(subject_map[sub_id]['label_path']).astype(np.float32)
 
         if eeg.shape[0] != labels.shape[0]:
             min_samples = min(eeg.shape[0], labels.shape[0])
@@ -151,11 +260,12 @@ def _load_all_subject_data_segmented_concatenated(config: dict) -> Tuple[np.ndar
             print(f"Attenzione: Dati EEG o label vuoti per il soggetto {sub_id}. Soggetto saltato.")
             continue
 
-        if labels.ndim > 1:
+        # Se non è valence_arousal_4class, assicurati che labels sia 1D
+        if label_metric != 'valence_arousal_4class' and labels.ndim > 1:
             labels = labels.squeeze()
             if labels.ndim > 1:
                  raise ValueError(f"Le label per il soggetto {sub_id} sono multidimensionali ({labels.shape}) anche dopo lo squeeze. Previste label 1D.")
-
+                 
         all_eeg_data_list.append(eeg)
         all_labels_data_list.append(labels)
         num_samples_subject = eeg.shape[0]
@@ -188,7 +298,8 @@ def get_data_splits(config: dict, hpo_subset_ratio: float = 1.0) -> Generator[Tu
     scenario = config['training_scenario']
     bin_thresh = config.get('binarized_threshold')
     balance_strat = config.get('balancing_strategy')
-
+    label_metric = config['label_metric'] # Aggiunto
+    
     print(f"\n--- Preparazione dati per scenario: {scenario} ---")
     
     # Caricamento dati già segmentati
@@ -249,21 +360,45 @@ def get_data_splits(config: dict, hpo_subset_ratio: float = 1.0) -> Generator[Tu
             
             print(f"      Dati segmentati e concatenati: X shape {X_fold_concatenated.shape}, y shape {y_fold_concatenated.shape}")
 
-            X_processed, y_processed = shuffle(X_fold_concatenated, y_fold_concatenated, random_state=i_k_rep)
-
+            # Binarizzazione a 2 o 4 classi prima dello shuffle per garantire stratificazione corretta
             if bin_thresh is not None:
                 print(f"      [K-Simple Rip. {i_k_rep+1}] Binarizzazione globale con soglia: {bin_thresh}")
-                y_processed = _binarize_labels(y_processed, bin_thresh)
+                y_fold_concatenated = _binarize_labels(y_fold_concatenated, bin_thresh)
+
+            # Shuffle dopo la binarizzazione ma prima dello split
+            X_processed, y_processed = shuffle(X_fold_concatenated, y_fold_concatenated, random_state=i_k_rep)
 
             if bin_thresh is not None and balance_strat == 'custom_undersampling':
                 print(f"      [K-Simple Rip. {i_k_rep+1}] Bilanciamento globale con custom_undersampling...")
+                # Il bilanciamento deve avvenire sulle etichette già binarizzate
                 if X_processed.shape[0] > 0 and len(np.unique(y_processed)) >= 2:
                     X_processed, y_processed = _custom_undersample(X_processed, y_processed)
                 else:
                     print(f"      [K-Simple Rip. {i_k_rep+1}] Bilanciamento saltato: dati insufficienti o meno di 2 classi.")
 
-            X_temp, X_test_final, y_temp, y_test_final = train_test_split(X_processed, y_processed, test_size=0.20, random_state=i_k_rep, shuffle=False)
-            X_train_final, X_val_final, y_train_final, y_val_final = train_test_split(X_temp, y_temp, test_size=0.25, random_state=i_k_rep, shuffle=False)
+            # Per la stratificazione di train_test_split, usare le etichette binarizzate
+            y_stratify_temp = y_processed # Queste etichette sono già binarizzate se bin_thresh è impostato
+
+            # Gestione del caso in cui la stratificazione non è possibile (es. una sola classe dopo binarizzazione)
+            can_stratify_split_temp = (len(np.unique(y_stratify_temp)) > 1 and 
+                                       len(y_stratify_temp) * 0.20 >= len(np.unique(y_stratify_temp))) # Per test_size=0.20
+            
+            if can_stratify_split_temp:
+                X_temp, X_test_final, y_temp, y_test_final = train_test_split(X_processed, y_processed, test_size=0.20, random_state=i_k_rep, stratify=y_stratify_temp)
+            else:
+                print(f"      [K-Simple Rip. {i_k_rep+1}] Impossibile stratificare il primo split (train_val/test). Eseguo split non stratificato.")
+                X_temp, X_test_final, y_temp, y_test_final = train_test_split(X_processed, y_processed, test_size=0.20, random_state=i_k_rep, shuffle=False) # shuffle=False se non stratifico per consistenza
+            
+            # Secondo split (train/val)
+            can_stratify_split_train_val = (len(np.unique(y_temp)) > 1 and 
+                                            len(y_temp) * 0.25 >= len(np.unique(y_temp))) # Per test_size=0.25
+            
+            if can_stratify_split_train_val:
+                X_train_final, X_val_final, y_train_final, y_val_final = train_test_split(X_temp, y_temp, test_size=0.25, random_state=i_k_rep, stratify=y_temp)
+            else:
+                print(f"      [K-Simple Rip. {i_k_rep+1}] Impossibile stratificare il secondo split (train/val). Eseguo split non stratificato.")
+                X_train_final, X_val_final, y_train_final, y_val_final = train_test_split(X_temp, y_temp, test_size=0.25, random_state=i_k_rep, shuffle=False)
+
 
             info = {'fold': i_k_rep + 1, 'total_folds': n_k_repetitions, 'scenario_info': f'k_simple repetition {i_k_rep + 1}'}
             yield X_train_final, y_train_final, X_val_final, y_val_final, X_test_final, y_test_final, info
@@ -291,7 +426,15 @@ def get_data_splits(config: dict, hpo_subset_ratio: float = 1.0) -> Generator[Tu
 
         # 4. Split in K folds
         # Usare shuffled_labels_for_kfold per la stratificazione
-        skf = StratifiedKFold(n_splits=n_splits, shuffle=False) # shuffle=False perché abbiamo già mescolato
+        # Controlla se è possibile stratificare per KFold
+        can_stratify_kfold = (len(np.unique(shuffled_labels_for_kfold)) > 1 and 
+                              len(shuffled_labels_for_kfold) >= n_splits * len(np.unique(shuffled_labels_for_kfold)))
+
+        if can_stratify_kfold:
+            skf = StratifiedKFold(n_splits=n_splits, shuffle=False) # shuffle=False perché abbiamo già mescolato
+        else:
+            print(f"    ATTENZIONE: Impossibile stratificare KFold (meno di 2 classi o pochi campioni rispetto agli splits). Eseguo KFold non stratificato.")
+            skf = StratifiedKFold(n_splits=n_splits, shuffle=False) # In questo caso, shuffle=False è comunque desiderabile se abbiamo già mescolato globalmente
 
         i_fold_count = 0
         for train_val_idx, test_idx in skf.split(shuffled_eeg_segmented, shuffled_labels_for_kfold):
@@ -305,18 +448,11 @@ def get_data_splits(config: dict, hpo_subset_ratio: float = 1.0) -> Generator[Tu
             labels_test_fold_segmented = shuffled_labels_for_kfold[test_idx] # Già binarizzate
 
             # Split train_val in train e val (es. 80/20 del set train_val del KFold)
-            # Se n_splits=5, train_val è 80%. Se vogliamo val=20% del totale, test_size per split è 0.25 di questo 80%.
-            # Oppure, più comunemente, una frazione del set di training del fold.
-            # Es. se il set di training del fold è 80% del totale, e vogliamo val al 20% del totale,
-            # allora val_split_ratio_on_train_fold = 0.20 / 0.80 = 0.25
-            # Se kfold_splits = 5, train_fold_size_ratio = (n_splits-1)/n_splits = 4/5 = 0.8
-            # target_val_size_ratio_total = 0.2 (ad esempio)
-            # val_split_ratio_on_train_fold = target_val_size_ratio_total / train_fold_size_ratio
-            # Per semplicità, usiamo una frazione fissa del set di training del fold, es. 20%
             val_split_percentage_of_train_fold = 0.20 
             
             # Assicurarsi che ci siano abbastanza campioni e classi per stratificare
-            can_stratify_val_split = len(np.unique(labels_train_val_fold_segmented)) > 1 and len(labels_train_val_fold_segmented) > 1/val_split_percentage_of_train_fold
+            can_stratify_val_split = (len(np.unique(labels_train_val_fold_segmented)) > 1 and 
+                                      len(labels_train_val_fold_segmented) * val_split_percentage_of_train_fold >= len(np.unique(labels_train_val_fold_segmented)))
             
             if eeg_train_val_fold_segmented.shape[0] < 2: # Non si può splittare
                 print(f"      ATTENZIONE Fold {i_fold_count}: Non abbastanza campioni ({eeg_train_val_fold_segmented.shape[0]}) nel set train_val per splittare in train/val. Usando tutto per train, val sarà vuoto.")
@@ -331,6 +467,7 @@ def get_data_splits(config: dict, hpo_subset_ratio: float = 1.0) -> Generator[Tu
                     stratify=labels_train_val_fold_segmented, random_state=i_fold_count 
                 )
             else: # Non si può stratificare, ma si può splittare
+                print(f"      ATTENZIONE Fold {i_fold_count}: Impossibile stratificare lo split train/val. Eseguo split non stratificato.")
                 X_train_final, X_val_final, y_train_final, y_val_final = train_test_split(
                     eeg_train_val_fold_segmented, labels_train_val_fold_segmented,
                     test_size=val_split_percentage_of_train_fold, shuffle=True,
@@ -401,41 +538,40 @@ def get_data_splits(config: dict, hpo_subset_ratio: float = 1.0) -> Generator[Tu
                            np.empty((0,), dtype=global_labels_segmented.dtype)
                 return np.concatenate(eeg_list, axis=0), np.concatenate(labels_list, axis=0)
 
-            X_train_final, y_train_final = get_segmented_data_for_subject_group(train_sub_ids)
-            X_val_final, y_val_final = get_segmented_data_for_subject_group(val_sub_ids)
-            X_test_final, y_test_final = get_segmented_data_for_subject_group([test_sub_id])
+            X_train_final, y_train_final_orig = get_segmented_data_for_subject_group(train_sub_ids)
+            X_val_final, y_val_final_orig = get_segmented_data_for_subject_group(val_sub_ids)
+            X_test_final, y_test_final_orig = get_segmented_data_for_subject_group([test_sub_id])
             
             print(f"    Forme dati grezzi LOSO per fold {i_fold + 1}:")
-            print(f"      Train: X={X_train_final.shape}, y={y_train_final.shape}")
-            print(f"      Val:   X={X_val_final.shape}, y={y_val_final.shape}")
-            print(f"      Test:  X={X_test_final.shape}, y={y_test_final.shape}")
+            print(f"      Train: X={X_train_final.shape}, y={y_train_final_orig.shape}")
+            print(f"      Val:   X={X_val_final.shape}, y={y_val_final_orig.shape}")
+            print(f"      Test:  X={X_test_final.shape}, y={y_test_final_orig.shape}")
 
-            # Data is already segmented, no need for _segment_data call here.
-            # print(f"    [LOSO Fold {i_fold+1}] Segmentazione...")
-            # X_train_final, y_train_final = _segment_data(eeg_train_raw_fold, labels_train_raw_fold, slicing_config_current_dataset, subject_id_for_log=f"Fold {i_fold+1} Train Group")
-            # X_val_final, y_val_final = _segment_data(eeg_val_raw_fold, labels_val_raw_fold, slicing_config_current_dataset, subject_id_for_log=f"Fold {i_fold+1} Val Group")
-            # X_test_final, y_test_final = _segment_data(eeg_test_raw_fold, labels_test_raw_fold, slicing_config_current_dataset, subject_id_for_log=f"Fold {i_fold+1} Test Subject {test_sub_id}")
-            print(f"      Train segmentato: X={X_train_final.shape}, y={y_train_final.shape}")
-            print(f"      Val segmentato:   X={X_val_final.shape}, y={y_val_final.shape}")
-            print(f"      Test segmentato:  X={X_test_final.shape}, y={y_test_final.shape}")
+            # Apply binarization now that data is split by subject
+            if bin_thresh is not None:
+                print(f"    [LOSO Fold {i_fold+1}] Binarizzazione dei set segmentati con soglia: {bin_thresh}")
+                y_train_final = _binarize_labels(y_train_final_orig, bin_thresh)
+                y_val_final = _binarize_labels(y_val_final_orig, bin_thresh)
+                y_test_final = _binarize_labels(y_test_final_orig, bin_thresh)
+            else:
+                y_train_final, y_val_final, y_test_final = y_train_final_orig, y_val_final_orig, y_test_final_orig
+
 
             # Shuffle dei set segmentati
             X_train_final, y_train_final = shuffle(X_train_final, y_train_final, random_state=i_fold)
             X_val_final, y_val_final = shuffle(X_val_final, y_val_final, random_state=i_fold + 1)
             X_test_final, y_test_final = shuffle(X_test_final, y_test_final, random_state=i_fold + 2)
+            
+            print(f"      Train segmentato: X={X_train_final.shape}, y={y_train_final.shape}")
+            print(f"      Val segmentato:   X={X_val_final.shape}, y={y_val_final.shape}")
+            print(f"      Test segmentato:  X={X_test_final.shape}, y={y_test_final.shape}")
 
-            if bin_thresh is not None:
-                print(f"    [LOSO Fold {i_fold+1}] Binarizzazione dei set segmentati con soglia: {bin_thresh}")
-                y_train_final = _binarize_labels(y_train_final, bin_thresh)
-                y_val_final = _binarize_labels(y_val_final, bin_thresh)
-                y_test_final = _binarize_labels(y_test_final, bin_thresh)
-
-                if balance_strat == 'custom_undersampling':
-                    print(f"    [LOSO Fold {i_fold+1}] Bilanciamento del SOLO training set con custom_undersampling...")
-                    if X_train_final.shape[0] > 0 and len(np.unique(y_train_final)) >= 2:
-                        X_train_final, y_train_final = _custom_undersample(X_train_final, y_train_final)
-                    else:
-                        print(f"    [LOSO Fold {i_fold+1}] Bilanciamento saltato: dati insufficienti o meno di 2 classi.")
+            if bin_thresh is not None and balance_strat == 'custom_undersampling':
+                print(f"    [LOSO Fold {i_fold+1}] Bilanciamento del SOLO training set con custom_undersampling...")
+                if X_train_final.shape[0] > 0 and len(np.unique(y_train_final)) >= 2:
+                    X_train_final, y_train_final = _custom_undersample(X_train_final, y_train_final)
+                else:
+                    print(f"    [LOSO Fold {i_fold+1}] Bilanciamento saltato: dati insufficienti o meno di 2 classi.")
 
             info = {
                 'fold': i_fold + 1,
