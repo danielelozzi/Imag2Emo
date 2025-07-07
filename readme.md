@@ -9,6 +9,7 @@ This project provides a comprehensive and configurable Python-based pipeline for
 -   **Multi-Dataset Support**: Includes preprocessing scripts for the DEAP (from both `.dat` and `.set` files) and GRAZ datasets.
 -   **Flexible Data Preparation**: Configurable data segmentation, resampling, band-pass filtering, and channel selection.
 -   **Advanced Training Scenarios**: Supports multiple cross-validation strategies:
+-   **Multi-Class Classification**: Supports both binary classification (e.g., High/Low Valence) and 4-class classification based on the Valence-Arousal model (HVHA, HVLA, LVHA, LVLA).
     -   `k_simple`: A simple repeated train/validation/test split.
     -   `kfold`: Stratified K-Fold cross-validation.
     -   `loso`: Leave-One-Subject-Out cross-validation.
@@ -30,7 +31,7 @@ The project is organized into several key Python scripts, each with a specific r
 
 -   `data_loader.py`
     -   **Role**: Handles data loading, splitting, and balancing.
-    -   **Functionality**: Loads the pre-segmented data from disk, applies balancing strategies (e.g., custom undersampling to handle class imbalance), and splits the data into training, validation, and test sets according to the specified scenario (`kfold`, `loso`, `k_simple`).
+    -   **Functionality**: Loads the pre-segmented data from disk, applies balancing strategies (e.g., custom undersampling to handle class imbalance), and splits the data into training, validation, and test sets according to the specified scenario (`kfold`, `loso`, `k_simple`). It also handles the binarization of labels into 2 or 4 classes.
 
 -   `eeg_classifier_training.py`
     -   **Role**: Contains the core training and evaluation loop.
@@ -71,6 +72,8 @@ The pipeline is orchestrated by `main.py` and follows these steps:
 4.  **Hyperparameter Optimization (Optional)**: If `RUN_HPO` is `True`, the pipeline initiates an Optuna study for each dataset. It uses a subset of the data and a simplified training scenario (`k_simple`) to efficiently find the best hyperparameters (e.g., learning rate, dropout). The best parameters found are saved to a `hpo_best_params.json` file. If `RUN_HPO` is `False`, the pipeline attempts to load these parameters from the JSON file instead.
 
 5.  **Full Training & Evaluation**: This is the main experimental phase. The pipeline iterates through all configured combinations (e.g., `[GRAZ]-[PRIVATE]-[valence]-[loso]-[EEGNetv4]`).
+    -   **2-Class**: `[GRAZ]-[PRIVATE]-[valence]-[loso]-[EEGNetv4]`
+    -   **4-Class**: `[DEAP_BDF]-[PUBLIC]-[valence_arousal_4class]-[kfold]-[EEGNetv4]`
     -   For each combination, it uses `get_data_splits` from `data_loader.py` to yield the train/validation/test sets for the current fold or run.
     -   It then calls `train_and_evaluate_model`, which performs the training using the best hyperparameters found during HPO (or defaults).
     -   The training loop includes features like early stopping to prevent overfitting and a learning rate scheduler.
@@ -85,13 +88,50 @@ All major configurations are centralized in `main.py`. Key dictionaries to modif
     -   `RUN_DISK_SEGMENTATION`: Set to `False` to skip the initial data processing and segmentation if the data is already cached on disk.
     -   `RUN_HPO`: Set to `False` to skip hyperparameter optimization and use pre-optimized parameters from a JSON file (or defaults).
 
--   **`PIPELINE_CONFIG`**: Defines parameters for the overall pipeline, such as the number of K-Fold splits, models to test (`model_types`), resampling/filter settings, and HPO settings.
+-   **`PIPELINE_CONFIG`**: Defines parameters for the overall pipeline. Key settings include:
+    -   `model_types`: A list of models to test (e.g., `['EEGNetv4']`).
+    -   `binarized_threshold`: Controls the classification task.
+        -   For **2-class** classification, use a float (e.g., `5.0`).
+        -   For **4-class** classification, use a dictionary with thresholds for both dimensions (e.g., `{'valence': 5.0, 'arousal': 5.0}`).
+    -   `balancing_strategy`: Strategy for handling imbalanced classes (e.g., `'custom_undersampling'`).
+    -   Resampling/filter settings and HPO parameters.
 
 -   **`TRAINING_CONFIG`**: Contains parameters for the training loop itself, such as the number of epochs, batch size, learning rate, and optimizer settings.
 
--   **`datasets_to_train`**: A dictionary specifying which datasets to run experiments on, along with their paths, labels, and other specific metadata.
+-   **`datasets_to_train`**: A dictionary specifying which datasets to run experiments on. For each dataset, you define:
+    -   Paths to the segmented data.
+    -   `public_labels` and `private_labels`: A list of label metrics to be tested. To run a 4-class experiment, include `'valence_arousal_4class'` in this list.
+    -   Other specific metadata like `sampling_rate`.
 
 -   **`*_TRAINING_PREP_CONFIG`**: Dictionaries that define the segmentation parameters for each dataset (e.g., start/end times, segment length).
+
+### Example: Setting up a 4-Class Experiment
+
+To run a 4-class classification on the DEAP_BDF dataset with public labels:
+
+1.  In `main.py`, ensure the `PIPELINE_CONFIG` is set for 4-class classification:
+    ```python
+    PIPELINE_CONFIG = {
+        # ... other settings
+        'binarized_threshold': {'valence': 5.0, 'arousal': 5.0},
+        # ...
+    }
+    ```
+
+2.  In the `datasets_to_train` dictionary, make sure `'valence_arousal_4class'` is included in the `public_labels` list for `DEAP_BDF`:
+    ```python
+    datasets_to_train = {
+        'DEAP_BDF': {
+            # ... other settings
+            'public_labels': ['valence_arousal_4class'],
+            'private_labels': [], # Can be empty if not testing private labels
+            # ...
+        },
+        # ... other datasets
+    }
+    ```
+
+The pipeline will automatically detect this configuration, load both valence and arousal labels, combine them into 4 classes (HVHA, HVLA, LVHA, LVLA), and train the model accordingly.
 
 ## How to Run
 
