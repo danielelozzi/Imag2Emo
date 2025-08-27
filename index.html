@@ -496,8 +496,8 @@ for train_idx, test_idx in loso_splitter.split(eeg_data):
             }
 
             // This path is based on your provided file structure.
-            // FIX: Removed the leading './' which can cause parsing issues in some environments.
-            const basePath = `${datasetFolder}/${labelType}/${dimensionFolder}/k_simple/${model}/scaling_ON/`;
+            // FIX: Prepended 'results/' to the base path.
+            const basePath = `results/${datasetFolder}/${labelType}/${dimensionFolder}/k_simple/${model}/scaling_ON/`;
             
             // Clear previous chart instance if it exists
             if (historyChart) {
