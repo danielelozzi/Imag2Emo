@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EEG-Based Emotion Recognition: The Role of Subjectivity</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* slate-50 */
+        }
+        .section-title {
+            @apply text-3xl font-bold text-slate-800 mb-6 text-center;
+        }
+        .card {
+            @apply bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow duration-300;
+        }
+        .nav-link {
+            @apply text-slate-600 hover:text-slate-900 font-medium transition-colors duration-300;
+        }
+        .chart-container {
+            position: relative;
+            height: 400px;
+            width: 100%;
+        }
+        .interactive-dashboard select {
+            @apply w-full bg-slate-100 border-slate-300 rounded-md p-2 transition-all duration-300;
+        }
+        .interactive-dashboard select:disabled {
+            @apply bg-slate-200 text-slate-400 cursor-not-allowed;
+        }
+    </style>
+</head>
+<body class="text-slate-700">
+
+    <!-- Header & Navigation -->
+    <header class="bg-white/80 backdrop-blur-md sticky top-0 z-50 shadow-sm">
+        <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="text-2xl font-bold text-slate-800">
+                EEG Emotion Project
+            </div>
+            <div class="hidden md:flex space-x-8">
+                <a href="#home" class="nav-link">Home</a>
+                <a href="#dashboard" class="nav-link">Dashboard</a>
+                <a href="#interactive-dashboard" class="nav-link">Interactive Dashboard</a>
+                <a href="#methodology" class="nav-link">Methodology</a>
+                <a href="#gallery" class="nav-link">Image Gallery</a>
+                <a href="#conclusion" class="nav-link">Conclusion</a>
+            </div>
+            <button id="mobile-menu-button" class="md:hidden text-slate-800 focus:outline-none">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+            </button>
+        </nav>
+        <!-- Mobile Menu -->
+        <div id="mobile-menu" class="hidden md:hidden px-6 pb-4">
+            <a href="#home" class="block py-2 nav-link">Home</a>
+            <a href="#dashboard" class="block py-2 nav-link">Dashboard</a>
+            <a href="#interactive-dashboard" class="block py-2 nav-link">Interactive Dashboard</a>
+            <a href="#methodology" class="block py-2 nav-link">Methodology</a>
+            <a href="#gallery" class="block py-2 nav-link">Image Gallery</a>
+            <a href="#conclusion" class="block py-2 nav-link">Conclusion</a>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-6 py-12">
+
+        <!-- Home Section -->
+        <section id="home" class="text-center mb-24">
+            <div class="max-w-4xl mx-auto">
+                <h1 class="text-4xl md:text-5xl font-extrabold text-slate-900 mb-4 leading-tight">Methodological Limitations of Emotion Recognition Using EEG Signals</h1>
+                <p class="text-lg text-slate-600 mb-6">An investigation into the neural correlates of visual emotional processing and the critical role of personalized labels in Affective Computing.</p>
+                <p class="text-sm text-slate-500 mb-8">By Daniele Lozzi, Enrico Mattei, Giuseppe Placidi, and Selina C. Wriessnegger</p>
+                <div class="card">
+                     <h3 class="text-xl font-semibold text-slate-800 mb-3">Abstract</h3>
+                    <p class="text-left text-slate-600 leading-relaxed">This study investigates the Electroencephalogram (EEG) correlates of emotional responses to visual stimuli from the NAPS-BE and SFIP datasets. We found that Deep Learning (DL) models trained with the original dataset labels performed poorly. However, when the same models were trained using personalized labels from participants' own ratings, their accuracy in classifying emotional states improved dramatically. These findings underscore the highly subjective nature of emotional reactions and highlight the critical need for personalized data to advance EEG-based emotion recognition systems.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Dashboard Section -->
+        <section id="dashboard" class="mb-24">
+            <h2 class="section-title">Results Dashboard</h2>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                
+                <!-- Chart: Model Accuracy Comparison -->
+                <div class="card col-span-1 lg:col-span-2">
+                    <h3 class="text-xl font-semibold text-slate-800 mb-4 text-center">Model Accuracy: Public vs. Private Labels (Imag2Emo Dataset)</h3>
+                    <div class="chart-container">
+                        <canvas id="modelAccuracyChart"></canvas>
+                    </div>
+                    <p class="text-sm text-slate-500 mt-4 text-center">This chart shows the significant accuracy improvement across various Deep Learning models when trained with subjective 'Private' labels compared to standardized 'Public' labels for Arousal classification.</p>
+                </div>
+
+                <!-- Chart: Label Transition for Valence -->
+                <div class="card">
+                    <h3 class="text-xl font-semibold text-slate-800 mb-4 text-center">Label Subjectivity: Valence (Imag2Emo)</h3>
+                    <div class="chart-container">
+                        <canvas id="valenceTransitionChart"></canvas>
+                    </div>
+                    <p class="text-sm text-slate-500 mt-4 text-center">Visualization of how 'public' valence labels were re-interpreted by participants. Note the high percentage of transitions, highlighting the discrepancy between standardized and experienced emotions.</p>
+                </div>
+
+                <!-- Chart: Label Transition for Arousal -->
+                <div class="card">
+                    <h3 class="text-xl font-semibold text-slate-800 mb-4 text-center">Label Subjectivity: Arousal (Imag2Emo)</h3>
+                    <div class="chart-container">
+                        <canvas id="arousalTransitionChart"></canvas>
+                    </div>
+                     <p class="text-sm text-slate-500 mt-4 text-center">This chart illustrates the shift in arousal ratings. A significant portion of stimuli labeled as 'High Arousal' publicly were perceived as 'Low Arousal' privately.</p>
+                </div>
+
+                <!-- Table: Human Rater Classification -->
+                <div class="card col-span-1 lg:col-span-2">
+                    <h3 class="text-xl font-semibold text-slate-800 mb-4">Human Rater Concordance</h3>
+                    <p class="text-slate-600 mb-4">This table treats the public labels as ground truth and the private labels as predictions from a "human classifier" to quantify the inconsistency between them.</p>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr>
+                                    <th class="border-b-2 p-3 font-semibold text-slate-800">Dataset</th>
+                                    <th class="border-b-2 p-3 font-semibold text-slate-800">Dimension</th>
+                                    <th class="border-b-2 p-3 font-semibold text-slate-800">Precision</th>
+                                    <th class="border-b-2 p-3 font-semibold text-slate-800">Recall</th>
+                                    <th class="border-b-2 p-3 font-semibold text-slate-800">F1-score</th>
+                                    <th class="border-b-2 p-3 font-semibold text-slate-800">Accuracy</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="hover:bg-slate-50">
+                                    <td class="border-b p-3 font-mono" rowspan="2">DEAP</td>
+                                    <td class="border-b p-3">Valence</td>
+                                    <td class="border-b p-3">0.73 (LV), 0.76 (HV)</td>
+                                    <td class="border-b p-3">0.66 (LV), 0.82 (HV)</td>
+                                    <td class="border-b p-3">0.69 (LV), 0.79 (HV)</td>
+                                    <td class="border-b p-3 font-bold">0.75</td>
+                                </tr>
+                                <tr class="hover:bg-slate-50">
+                                    <td class="border-b p-3">Arousal</td>
+                                    <td class="border-b p-3">0.65 (LA), 0.66 (HA)</td>
+                                    <td class="border-b p-3">0.52 (LA), 0.77 (HA)</td>
+                                    <td class="border-b p-3">0.58 (LA), 0.71 (HA)</td>
+                                    <td class="border-b p-3 font-bold">0.66</td>
+                                </tr>
+                                <tr class="hover:bg-slate-50">
+                                    <td class="border-b p-3 font-mono" rowspan="2">Imag2Emo</td>
+                                    <td class="border-b p-3">Valence</td>
+                                    <td class="border-b p-3">0.35 (LV), 0.67 (HV)</td>
+                                    <td class="border-b p-3">0.41 (LV), 0.61 (HV)</td>
+                                    <td class="border-b p-3">0.38 (LV), 0.64 (HV)</td>
+                                    <td class="border-b p-3 font-bold">0.54</td>
+                                </tr>
+                                <tr class="hover:bg-slate-50">
+                                    <td class="border-b p-3">Arousal</td>
+                                    <td class="border-b p-3">0.90 (LA), 0.11 (HA)</td>
+                                    <td class="border-b p-3">0.62 (LA), 0.40 (HA)</td>
+                                    <td class="border-b p-3">0.73 (LA), 0.17 (HA)</td>
+                                    <td class="border-b p-3 font-bold">0.59</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Interactive Dashboard Section -->
+        <section id="interactive-dashboard" class="mb-24 interactive-dashboard">
+            <h2 class="section-title">Interactive Dashboard</h2>
+            <div class="card">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div>
+                        <label for="dataset-select" class="block text-sm font-medium text-slate-600 mb-1">Dataset</label>
+                        <select id="dataset-select">
+                            <option value="DEAP">DEAP</option>
+                            <option value="Imag2Emo">Imag2Emo (GRAZ)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="label-type-select" class="block text-sm font-medium text-slate-600 mb-1">Label Type</label>
+                        <select id="label-type-select">
+                            <option value="PUBLIC">Public</option>
+                            <option value="PRIVATE">Private</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="dimension-select" class="block text-sm font-medium text-slate-600 mb-1">Dimension</label>
+                        <select id="dimension-select">
+                            <option value="valence">Valence</option>
+                            <option value="arousal">Arousal</option>
+                            <option value="hns" id="hns-option" hidden>HNS (Discrete)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="model-select" class="block text-sm font-medium text-slate-600 mb-1">Model</label>
+                        <select id="model-select">
+                            <option value="EEGNetv4">EEGNetv4</option>
+                            <option value="EEGDeformer">EEGDeformer</option>
+                            <option value="ContraNet">ContraNet</option>
+                            <option value="Conformer">Conformer</option>
+                            <option value="EEGViT">EEGViT</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="results-container" class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- Results will be dynamically loaded here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Methodology & Code Section -->
+        <section id="methodology" class="mb-24">
+            <h2 class="section-title">Methodology & Code</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- EEG Preprocessing Pipeline -->
+                <div class="card md:col-span-2">
+                    <h3 class="text-xl font-semibold text-slate-800 mb-4">EEG Data Preprocessing Pipeline</h3>
+                    <div class="flex flex-wrap items-center justify-center text-center gap-2">
+                        <div class="p-3 bg-slate-100 rounded-lg">Signal Acquisition</div>
+                        <div class="text-slate-400 font-bold text-2xl">&rarr;</div>
+                        <div class="p-3 bg-slate-100 rounded-lg">1-100 Hz Filtering</div>
+                        <div class="text-slate-400 font-bold text-2xl">&rarr;</div>
+                        <div class="p-3 bg-slate-100 rounded-lg">PREP Pipeline</div>
+                        <div class="text-slate-400 font-bold text-2xl">&rarr;</div>
+                        <div class="p-3 bg-slate-100 rounded-lg">ICA (Extended Infomax)</div>
+                        <div class="text-slate-400 font-bold text-2xl">&rarr;</div>
+                        <div class="p-3 bg-slate-100 rounded-lg">Remove Artifacts (ICLabel)</div>
+                         <div class="text-slate-400 font-bold text-2xl">&rarr;</div>
+                        <div class="p-3 bg-slate-100 rounded-lg">4-64 Hz Filtering</div>
+                         <div class="text-slate-400 font-bold text-2xl">&rarr;</div>
+                        <div class="p-3 bg-slate-100 rounded-lg">Epoching (-1s to +3s)</div>
+                    </div>
+                </div>
+
+                <!-- Code Snippet -->
+                <div class="card">
+                    <h3 class="text-xl font-semibold text-slate-800 mb-4">Model Training (Conceptual Code)</h3>
+                    <div class="bg-slate-800 rounded-lg p-4 text-white font-mono text-sm overflow-x-auto">
+                        <pre><code>
+# Conceptual Python code using a PyTorch-like framework
+
+# 1. Load Data
+# Choose 'private' or 'public' labels
+eeg_data, labels = load_preprocessed_data(label_type='private')
+
+# 2. Define Model
+# Models like EEGNetv4, Conformer, etc.
+model = EEGNetv4(channels=32, samples=512, num_classes=2)
+
+# 3. Set up Cross-Validation
+# L.O.S.O: Leave-One-Subject-Out
+for train_idx, test_idx in loso_splitter.split(eeg_data):
+    train_loader = DataLoader(eeg_data[train_idx], labels[train_idx])
+    test_loader = DataLoader(eeg_data[test_idx], labels[test_idx])
+
+    # 4. Training Loop
+    optimizer = Adam(model.parameters(), lr=0.001)
+    criterion = CrossEntropyLoss()
+
+    for epoch in range(num_epochs):
+        for batch_data, batch_labels in train_loader:
+            optimizer.zero_grad()
+            outputs = model(batch_data)
+            loss = criterion(outputs, batch_labels)
+            loss.backward()
+            optimizer.step()
+
+    # 5. Evaluate Model
+    accuracy = evaluate_model(model, test_loader)
+    print(f"Subject accuracy: {accuracy}")
+                        </code></pre>
+                    </div>
+                </div>
+                
+                <!-- DL Architectures -->
+                <div class="card">
+                    <h3 class="text-xl font-semibold text-slate-800 mb-4">Deep Learning Architectures</h3>
+                    <p class="text-slate-600 mb-4">We employed a suite of state-of-the-art DL models designed for EEG signal processing to ensure a robust analysis.</p>
+                    <ul class="list-disc list-inside space-y-2 text-slate-600">
+                        <li><span class="font-semibold">EEGNetv4:</span> A compact CNN for EEG-based BCIs, effective at capturing temporal and spatial features.</li>
+                        <li><span class="font-semibold">ContraNet:</span> A hybrid network designed for classifying EEG and EMG signals, especially with limited data.</li>
+                        <li><span class="font-semibold">Conformer:</span> A model combining convolution and transformers, tailored for motor imagery and emotion paradigms.</li>
+                        <li><span class="font-semibold">EEGVIT:</span> A Vision Transformer (ViT) based architecture adapted for visual task EEG data.</li>
+                        <li><span class="font-semibold">EEG-deformer:</span> A dense convolutional transformer for detecting cognitive attention and mental workload.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Image Gallery Section -->
+        <section id="gallery" class="mb-24">
+            <h2 class="section-title">Stimulus Image Gallery</h2>
+            <p class="text-center text-slate-600 max-w-2xl mx-auto mb-8">A selection of representative images from the NAPS-BE and SFIP datasets used to elicit emotional responses. (Note: These are placeholder images for illustration).</p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                <div class="card text-center">
+                    <img src="https://placehold.co/600x400/a7f3d0/1e293b?text=Happiness" alt="Happiness Stimulus" class="rounded-lg mb-4" onerror="this.onerror=null;this.src='https://placehold.co/600x400/e0e0e0/a0a0a0?text=Image+Not+Found';">
+                    <h4 class="font-semibold text-slate-800">Category: Happiness</h4>
+                    <p class="text-sm text-slate-500">Images designed to evoke positive valence.</p>
+                </div>
+                <div class="card text-center">
+                    <img src="https://placehold.co/600x400/e2e8f0/1e293b?text=Neutral" alt="Neutral Stimulus" class="rounded-lg mb-4" onerror="this.onerror=null;this.src='https://placehold.co/600x400/e0e0e0/a0a0a0?text=Image+Not+Found';">
+                    <h4 class="font-semibold text-slate-800">Category: Neutral</h4>
+                    <p class="text-sm text-slate-500">Images with low valence and low arousal ratings.</p>
+                </div>
+                <div class="card text-center">
+                    <img src="https://placehold.co/600x400/94a3b8/1e293b?text=Sadness" alt="Sadness Stimulus" class="rounded-lg mb-4" onerror="this.onerror=null;this.src='https://placehold.co/600x400/e0e0e0/a0a0a0?text=Image+Not+Found';">
+                    <h4 class="font-semibold text-slate-800">Category: Sadness</h4>
+                    <p class="text-sm text-slate-500">Images designed to evoke negative valence.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Conclusion Section -->
+        <section id="conclusion" class="text-center">
+             <h2 class="section-title">Conclusion & Future Directions</h2>
+             <div class="max-w-4xl mx-auto">
+                <div class="card">
+                     <p class="text-lg text-slate-600 leading-relaxed mb-6">Our study conclusively demonstrates that the neural response recorded via EEG is more closely correlated with a person's inner subjective experience than with the standardized classification of a visual stimulus. Integrating this subjectivity is not an obstacle, but the <span class="font-bold">fundamental requirement</span> for creating accurate, effective, and truly human-centered affective technologies.</p>
+                    <h3 class="text-xl font-semibold text-slate-800 mb-3">Future Work</h3>
+                    <p class="text-slate-600">To improve generalizability and replicability, future studies should not only integrate subjective self-assessments but also adopt standardized data formats like <span class="font-mono bg-slate-100 px-2 py-1 rounded">BIDS</span> (Brain Imaging Data Structure) and <span class="font-mono bg-slate-100 px-2 py-1 rounded">DICOM</span>. This will facilitate more efficient dataset sharing and the development of more robust, generalizable emotion recognition models.</p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-800 text-slate-300 mt-24">
+        <div class="container mx-auto px-6 py-8 text-center">
+            <p>&copy; 2024 EEG Emotion Recognition Project. All rights reserved.</p>
+            <p class="text-sm text-slate-400 mt-2">This website is a representation of the research paper "Methodological limitations of emotion recognition using EEG signals".</p>
+        </div>
+    </footer>
+
+    <script>
+        // Mobile Menu Toggle
+        const mobileMenuButton = document.getElementById('mobile-menu-button');
+        const mobileMenu = document.getElementById('mobile-menu');
+        mobileMenuButton.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+        });
+
+        // Chart.js Implementations
+        // Chart 1: Model Accuracy
+        const modelAccuracyCtx = document.getElementById('modelAccuracyChart').getContext('2d');
+        new Chart(modelAccuracyCtx, {
+            type: 'bar',
+            data: {
+                labels: ['EEGNetv4', 'ContraNet', 'Conformer', 'EEGDeformer', 'EEGVIT'],
+                datasets: [{
+                    label: 'Public Labels Accuracy',
+                    data: [0.54, 0.41, 0.46, 0.47, 0.40], // From Imag2Emo, K-simple, Arousal
+                    backgroundColor: 'rgba(100, 116, 139, 0.6)', // slate-500
+                    borderColor: 'rgba(100, 116, 139, 1)',
+                    borderWidth: 1
+                }, {
+                    label: 'Private Labels Accuracy',
+                    data: [0.76, 0.75, 0.74, 0.70, 0.63], // From Imag2Emo, K-simple, Arousal
+                    backgroundColor: 'rgba(29, 78, 216, 0.6)', // blue-700
+                    borderColor: 'rgba(29, 78, 216, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 1.0,
+                        title: {
+                            display: true,
+                            text: 'Classification Accuracy'
+                        }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    label += (context.parsed.y * 100).toFixed(1) + '%';
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Chart 2: Valence Transition
+        const valenceTransitionCtx = document.getElementById('valenceTransitionChart').getContext('2d');
+        new Chart(valenceTransitionCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Low Valence -> Low Valence (Stability)', 'Low Valence -> High Valence (Transition)', 'High Valence -> High Valence (Stability)', 'High Valence -> Low Valence (Transition)'],
+                datasets: [{
+                    label: 'Label Transition',
+                    data: [63.1, 36.9, 71.7, 28.3], // From Table I
+                    backgroundColor: [
+                        'rgba(59, 130, 246, 0.7)', // blue-500
+                        'rgba(239, 68, 68, 0.5)',  // red-500 (transition)
+                        'rgba(34, 197, 94, 0.7)', // green-500
+                        'rgba(239, 68, 68, 0.5)'   // red-500 (transition)
+                    ],
+                    borderColor: '#fff',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    tooltip: {
+                         callbacks: {
+                            label: function(context) {
+                                return `${context.label}: ${context.raw}%`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Chart 3: Arousal Transition
+        const arousalTransitionCtx = document.getElementById('arousalTransitionChart').getContext('2d');
+        new Chart(arousalTransitionCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Low Arousal -> Low Arousal (Stability)', 'Low Arousal -> High Arousal (Transition)', 'High Arousal -> High Arousal (Stability)', 'High Arousal -> Low Arousal (Transition)'],
+                datasets: [{
+                    label: 'Label Transition',
+                    data: [62.3, 37.7, 54.2, 45.8], // From Table I
+                    backgroundColor: [
+                        'rgba(59, 130, 246, 0.7)', // blue-500
+                        'rgba(239, 68, 68, 0.5)',  // red-500 (transition)
+                        'rgba(34, 197, 94, 0.7)', // green-500
+                        'rgba(239, 68, 68, 0.5)'   // red-500 (transition)
+                    ],
+                    borderColor: '#fff',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                     tooltip: {
+                         callbacks: {
+                            label: function(context) {
+                                return `${context.label}: ${context.raw}%`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        // --- Interactive Dashboard Logic ---
+        const datasetSelect = document.getElementById('dataset-select');
+        const labelTypeSelect = document.getElementById('label-type-select');
+        const dimensionSelect = document.getElementById('dimension-select');
+        const modelSelect = document.getElementById('model-select');
+        const resultsContainer = document.getElementById('results-container');
+        const hnsOption = document.getElementById('hns-option');
+        let historyChart = null; // To hold the chart instance
+
+        function updateDashboard() {
+            const dataset = datasetSelect.value;
+            const labelType = labelTypeSelect.value;
+            const dimension = dimensionSelect.value;
+            const model = modelSelect.value;
+
+            const datasetFolder = dataset === 'Imag2Emo' ? 'GRAZ' : 'DEAP';
+            
+            let dimensionFolder = '';
+            if (dimension === 'hns') {
+                dimensionFolder = 'discrete_emotions';
+            } else {
+                const labelFolder = labelType === 'PUBLIC' ? `${dimension}_pubblica` : `${dimension}_privata`;
+                dimensionFolder = labelFolder;
+            }
+
+            // This path is based on your provided file structure.
+            // FIX: Removed the leading './' which can cause parsing issues in some environments.
+            const basePath = `${datasetFolder}/${labelType}/${dimensionFolder}/k_simple/${model}/scaling_ON/`;
+            
+            // Clear previous chart instance if it exists
+            if (historyChart) {
+                historyChart.destroy();
+            }
+
+            resultsContainer.innerHTML = `
+                <div class="card">
+                    <h3 class="text-xl font-semibold text-slate-800 mb-4">Loss Curves</h3>
+                    <img src="${basePath}avg_curves.png" alt="Loss Curves" class="rounded-lg" onerror="this.src='https://placehold.co/600x400/f1f5f9/94a3b8?text=Image+Not+Found';">
+                </div>
+                <div class="card">
+                    <h3 class="text-xl font-semibold text-slate-800 mb-4">Confusion Matrix</h3>
+                    <img src="${basePath}confusion_matrix_fold_1.png" alt="Confusion Matrix" class="rounded-lg" onerror="this.src='https://placehold.co/600x400/f1f5f9/94a3b8?text=Image+Not+Found';">
+                </div>
+                <div class="card col-span-1 md:col-span-2">
+                    <h3 class="text-xl font-semibold text-slate-800 mb-4">Training History</h3>
+                    <div class="chart-container">
+                        <canvas id="historyChart"></canvas>
+                    </div>
+                    <p id="history-error" class="text-red-500 text-center mt-4 hidden">Could not load training history.</p>
+                </div>
+                <div class="card col-span-1 md:col-span-2">
+                    <h3 class="text-xl font-semibold text-slate-800 mb-4">Classification Report</h3>
+                    <pre id="report-container" class="bg-slate-100 p-4 rounded-lg overflow-x-auto text-sm">Loading report...</pre>
+                </div>
+            `;
+
+            fetch(`${basePath}history_fold_1.json`)
+                .then(response => {
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response.json();
+                })
+                .then(data => {
+                    document.getElementById('history-error').classList.add('hidden');
+                    const historyCtx = document.getElementById('historyChart').getContext('2d');
+                    historyChart = new Chart(historyCtx, {
+                        type: 'line',
+                        data: {
+                            labels: data.accuracy.map((_, i) => i + 1),
+                            datasets: [
+                                {
+                                    label: 'Training Accuracy',
+                                    data: data.accuracy,
+                                    borderColor: 'rgba(29, 78, 216, 1)',
+                                    tension: 0.1,
+                                    fill: false,
+                                },
+                                {
+                                    label: 'Validation Accuracy',
+                                    data: data.val_accuracy,
+                                    borderColor: 'rgba(219, 39, 119, 1)',
+                                    tension: 0.1,
+                                    fill: false,
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: { beginAtZero: true, title: { display: true, text: 'Accuracy' } },
+                                x: { title: { display: true, text: 'Epoch' } }
+                            }
+                        }
+                    });
+                }).catch(error => {
+                     console.error('Error fetching history:', error);
+                     document.getElementById('historyChart').style.display = 'none';
+                     document.getElementById('history-error').classList.remove('hidden');
+                });
+
+            fetch(`${basePath}report_fold_1.json`)
+                .then(response => {
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response.json();
+                })
+                .then(data => {
+                    document.getElementById('report-container').textContent = JSON.stringify(data, null, 2);
+                }).catch(error => {
+                    console.error('Error fetching report:', error);
+                    document.getElementById('report-container').textContent = 'Could not load classification report.';
+                });
+        }
+
+        function handleDatasetChange() {
+            if (datasetSelect.value === 'DEAP') {
+                hnsOption.hidden = true;
+                if (dimensionSelect.value === 'hns') {
+                    dimensionSelect.value = 'valence';
+                }
+            } else { // Imag2Emo
+                hnsOption.hidden = false;
+            }
+            updateDashboard();
+        }
+
+        datasetSelect.addEventListener('change', handleDatasetChange);
+        labelTypeSelect.addEventListener('change', updateDashboard);
+        dimensionSelect.addEventListener('change', updateDashboard);
+        modelSelect.addEventListener('change', updateDashboard);
+
+        // Initial setup
+        handleDatasetChange();
+
+    </script>
+</body>
+</html>
