@@ -1,0 +1,18 @@
+{
+    "test_subject": "P011",
+    "validation_subjects": [
+        "P013",
+        "P014"
+    ],
+    "training_subjects": [
+        "P008",
+        "P012",
+        "P015",
+        "P016",
+        "P017",
+        "P020",
+        "P024",
+        "P026",
+        "P027"
+    ]
+}
