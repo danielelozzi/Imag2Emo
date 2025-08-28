@@ -47,7 +47,6 @@
                 <a href="#dashboard" class="nav-link">Dashboard</a>
                 <a href="#interactive-dashboard" class="nav-link">Interactive Dashboard</a>
                 <a href="#methodology" class="nav-link">Methodology</a>
-                <a href="#gallery" class="nav-link">Image Gallery</a>
                 <a href="#conclusion" class="nav-link">Conclusion</a>
             </div>
             <button id="mobile-menu-button" class="md:hidden text-slate-800 focus:outline-none">
@@ -60,7 +59,6 @@
             <a href="#dashboard" class="block py-2 nav-link">Dashboard</a>
             <a href="#interactive-dashboard" class="block py-2 nav-link">Interactive Dashboard</a>
             <a href="#methodology" class="block py-2 nav-link">Methodology</a>
-            <a href="#gallery" class="block py-2 nav-link">Image Gallery</a>
             <a href="#conclusion" class="block py-2 nav-link">Conclusion</a>
         </div>
     </header>
@@ -85,85 +83,71 @@
         <section id="dashboard" class="mb-24">
             <h2 class="section-title">Results Dashboard</h2>
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                
-                <!-- Chart: Model Accuracy Comparison -->
+
+                <!-- Model Accuracy Charts -->
                 <div class="card col-span-1 lg:col-span-2">
-                    <h3 class="text-xl font-semibold text-slate-800 mb-4 text-center">Model Accuracy: Public vs. Private Labels (Imag2Emo Dataset)</h3>
+                    <h3 class="text-xl font-semibold text-slate-800 mb-4 text-center">DEAP: Model Accuracy for Valence</h3>
                     <div class="chart-container">
-                        <canvas id="modelAccuracyChart"></canvas>
+                        <canvas id="modelAccuracyDEAPValence"></canvas>
                     </div>
-                    <p class="text-sm text-slate-500 mt-4 text-center">This chart shows the significant accuracy improvement across various Deep Learning models when trained with subjective 'Private' labels compared to standardized 'Public' labels for Arousal classification.</p>
+                </div>
+                <div class="card col-span-1 lg:col-span-2">
+                    <h3 class="text-xl font-semibold text-slate-800 mb-4 text-center">DEAP: Model Accuracy for Arousal</h3>
+                    <div class="chart-container">
+                        <canvas id="modelAccuracyDEAPArousal"></canvas>
+                    </div>
+                </div>
+                <div class="card col-span-1 lg:col-span-2">
+                    <h3 class="text-xl font-semibold text-slate-800 mb-4 text-center">Imag2Emo: Model Accuracy for Valence</h3>
+                    <div class="chart-container">
+                        <canvas id="modelAccuracyImag2EmoValence"></canvas>
+                    </div>
+                </div>
+                <div class="card col-span-1 lg:col-span-2">
+                    <h3 class="text-xl font-semibold text-slate-800 mb-4 text-center">Imag2Emo: Model Accuracy for Arousal</h3>
+                    <div class="chart-container">
+                        <canvas id="modelAccuracyImag2EmoArousal"></canvas>
+                    </div>
+                </div>
+                <div class="card col-span-1 lg:col-span-2">
+                    <h3 class="text-xl font-semibold text-slate-800 mb-4 text-center">Imag2Emo: Model Accuracy for HNS</h3>
+                    <div class="chart-container">
+                        <canvas id="modelAccuracyImag2EmoHNS"></canvas>
+                    </div>
                 </div>
 
-                <!-- Chart: Label Transition for Valence -->
+                <!-- Label Subjectivity Charts -->
                 <div class="card">
                     <h3 class="text-xl font-semibold text-slate-800 mb-4 text-center">Label Subjectivity: Valence (Imag2Emo)</h3>
                     <div class="chart-container">
-                        <canvas id="valenceTransitionChart"></canvas>
+                        <canvas id="valenceTransitionChartImag2Emo"></canvas>
                     </div>
-                    <p class="text-sm text-slate-500 mt-4 text-center">Visualization of how 'public' valence labels were re-interpreted by participants. Note the high percentage of transitions, highlighting the discrepancy between standardized and experienced emotions.</p>
                 </div>
-
-                <!-- Chart: Label Transition for Arousal -->
                 <div class="card">
                     <h3 class="text-xl font-semibold text-slate-800 mb-4 text-center">Label Subjectivity: Arousal (Imag2Emo)</h3>
                     <div class="chart-container">
-                        <canvas id="arousalTransitionChart"></canvas>
+                        <canvas id="arousalTransitionChartImag2Emo"></canvas>
                     </div>
-                     <p class="text-sm text-slate-500 mt-4 text-center">This chart illustrates the shift in arousal ratings. A significant portion of stimuli labeled as 'High Arousal' publicly were perceived as 'Low Arousal' privately.</p>
+                </div>
+                 <div class="card">
+                    <h3 class="text-xl font-semibold text-slate-800 mb-4 text-center">Label Subjectivity: Valence (DEAP)</h3>
+                    <div class="chart-container">
+                        <canvas id="valenceTransitionChartDEAP"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3 class="text-xl font-semibold text-slate-800 mb-4 text-center">Label Subjectivity: Arousal (DEAP)</h3>
+                    <div class="chart-container">
+                        <canvas id="arousalTransitionChartDEAP"></canvas>
+                    </div>
+                </div>
+                <div class="card col-span-1 lg:col-span-2">
+                    <h3 class="text-xl font-semibold text-slate-800 mb-4 text-center">Label Subjectivity: HNS (Imag2Emo)</h3>
+                    <div class="chart-container">
+                        <canvas id="hnsTransitionChartImag2Emo"></canvas>
+                    </div>
                 </div>
 
-                <!-- Table: Human Rater Classification -->
-                <div class="card col-span-1 lg:col-span-2">
-                    <h3 class="text-xl font-semibold text-slate-800 mb-4">Human Rater Concordance</h3>
-                    <p class="text-slate-600 mb-4">This table treats the public labels as ground truth and the private labels as predictions from a "human classifier" to quantify the inconsistency between them.</p>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse">
-                            <thead>
-                                <tr>
-                                    <th class="border-b-2 p-3 font-semibold text-slate-800">Dataset</th>
-                                    <th class="border-b-2 p-3 font-semibold text-slate-800">Dimension</th>
-                                    <th class="border-b-2 p-3 font-semibold text-slate-800">Precision</th>
-                                    <th class="border-b-2 p-3 font-semibold text-slate-800">Recall</th>
-                                    <th class="border-b-2 p-3 font-semibold text-slate-800">F1-score</th>
-                                    <th class="border-b-2 p-3 font-semibold text-slate-800">Accuracy</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr class="hover:bg-slate-50">
-                                    <td class="border-b p-3 font-mono" rowspan="2">DEAP</td>
-                                    <td class="border-b p-3">Valence</td>
-                                    <td class="border-b p-3">0.73 (LV), 0.76 (HV)</td>
-                                    <td class="border-b p-3">0.66 (LV), 0.82 (HV)</td>
-                                    <td class="border-b p-3">0.69 (LV), 0.79 (HV)</td>
-                                    <td class="border-b p-3 font-bold">0.75</td>
-                                </tr>
-                                <tr class="hover:bg-slate-50">
-                                    <td class="border-b p-3">Arousal</td>
-                                    <td class="border-b p-3">0.65 (LA), 0.66 (HA)</td>
-                                    <td class="border-b p-3">0.52 (LA), 0.77 (HA)</td>
-                                    <td class="border-b p-3">0.58 (LA), 0.71 (HA)</td>
-                                    <td class="border-b p-3 font-bold">0.66</td>
-                                </tr>
-                                <tr class="hover:bg-slate-50">
-                                    <td class="border-b p-3 font-mono" rowspan="2">Imag2Emo</td>
-                                    <td class="border-b p-3">Valence</td>
-                                    <td class="border-b p-3">0.35 (LV), 0.67 (HV)</td>
-                                    <td class="border-b p-3">0.41 (LV), 0.61 (HV)</td>
-                                    <td class="border-b p-3">0.38 (LV), 0.64 (HV)</td>
-                                    <td class="border-b p-3 font-bold">0.54</td>
-                                </tr>
-                                <tr class="hover:bg-slate-50">
-                                    <td class="border-b p-3">Arousal</td>
-                                    <td class="border-b p-3">0.90 (LA), 0.11 (HA)</td>
-                                    <td class="border-b p-3">0.62 (LA), 0.40 (HA)</td>
-                                    <td class="border-b p-3">0.73 (LA), 0.17 (HA)</td>
-                                    <td class="border-b p-3 font-bold">0.59</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
             </div>
         </section>
         
@@ -234,49 +218,9 @@
                         <div class="p-3 bg-slate-100 rounded-lg">Epoching (-1s to +3s)</div>
                     </div>
                 </div>
-
-                <!-- Code Snippet -->
-                <div class="card">
-                    <h3 class="text-xl font-semibold text-slate-800 mb-4">Model Training (Conceptual Code)</h3>
-                    <div class="bg-slate-800 rounded-lg p-4 text-white font-mono text-sm overflow-x-auto">
-                        <pre><code>
-# Conceptual Python code using a PyTorch-like framework
-
-# 1. Load Data
-# Choose 'private' or 'public' labels
-eeg_data, labels = load_preprocessed_data(label_type='private')
-
-# 2. Define Model
-# Models like EEGNetv4, Conformer, etc.
-model = EEGNetv4(channels=32, samples=512, num_classes=2)
-
-# 3. Set up Cross-Validation
-# L.O.S.O: Leave-One-Subject-Out
-for train_idx, test_idx in loso_splitter.split(eeg_data):
-    train_loader = DataLoader(eeg_data[train_idx], labels[train_idx])
-    test_loader = DataLoader(eeg_data[test_idx], labels[test_idx])
-
-    # 4. Training Loop
-    optimizer = Adam(model.parameters(), lr=0.001)
-    criterion = CrossEntropyLoss()
-
-    for epoch in range(num_epochs):
-        for batch_data, batch_labels in train_loader:
-            optimizer.zero_grad()
-            outputs = model(batch_data)
-            loss = criterion(outputs, batch_labels)
-            loss.backward()
-            optimizer.step()
-
-    # 5. Evaluate Model
-    accuracy = evaluate_model(model, test_loader)
-    print(f"Subject accuracy: {accuracy}")
-                        </code></pre>
-                    </div>
-                </div>
                 
                 <!-- DL Architectures -->
-                <div class="card">
+                <div class="card md:col-span-2">
                     <h3 class="text-xl font-semibold text-slate-800 mb-4">Deep Learning Architectures</h3>
                     <p class="text-slate-600 mb-4">We employed a suite of state-of-the-art DL models designed for EEG signal processing to ensure a robust analysis.</p>
                     <ul class="list-disc list-inside space-y-2 text-slate-600">
@@ -286,29 +230,6 @@ for train_idx, test_idx in loso_splitter.split(eeg_data):
                         <li><span class="font-semibold">EEGVIT:</span> A Vision Transformer (ViT) based architecture adapted for visual task EEG data.</li>
                         <li><span class="font-semibold">EEG-deformer:</span> A dense convolutional transformer for detecting cognitive attention and mental workload.</li>
                     </ul>
-                </div>
-            </div>
-        </section>
-
-        <!-- Image Gallery Section -->
-        <section id="gallery" class="mb-24">
-            <h2 class="section-title">Stimulus Image Gallery</h2>
-            <p class="text-center text-slate-600 max-w-2xl mx-auto mb-8">A selection of representative images from the NAPS-BE and SFIP datasets used to elicit emotional responses. (Note: These are placeholder images for illustration).</p>
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                <div class="card text-center">
-                    <img src="https://placehold.co/600x400/a7f3d0/1e293b?text=Happiness" alt="Happiness Stimulus" class="rounded-lg mb-4" onerror="this.onerror=null;this.src='https://placehold.co/600x400/e0e0e0/a0a0a0?text=Image+Not+Found';">
-                    <h4 class="font-semibold text-slate-800">Category: Happiness</h4>
-                    <p class="text-sm text-slate-500">Images designed to evoke positive valence.</p>
-                </div>
-                <div class="card text-center">
-                    <img src="https://placehold.co/600x400/e2e8f0/1e293b?text=Neutral" alt="Neutral Stimulus" class="rounded-lg mb-4" onerror="this.onerror=null;this.src='https://placehold.co/600x400/e0e0e0/a0a0a0?text=Image+Not+Found';">
-                    <h4 class="font-semibold text-slate-800">Category: Neutral</h4>
-                    <p class="text-sm text-slate-500">Images with low valence and low arousal ratings.</p>
-                </div>
-                <div class="card text-center">
-                    <img src="https://placehold.co/600x400/94a3b8/1e293b?text=Sadness" alt="Sadness Stimulus" class="rounded-lg mb-4" onerror="this.onerror=null;this.src='https://placehold.co/600x400/e0e0e0/a0a0a0?text=Image+Not+Found';">
-                    <h4 class="font-semibold text-slate-800">Category: Sadness</h4>
-                    <p class="text-sm text-slate-500">Images designed to evoke negative valence.</p>
                 </div>
             </div>
         </section>
@@ -335,6 +256,9 @@ for train_idx, test_idx in loso_splitter.split(eeg_data):
         </div>
     </footer>
 
+    <!-- The generated data will be loaded from this file -->
+    <script src="embedded_data.js"></script>
+
     <script>
         // Mobile Menu Toggle
         const mobileMenuButton = document.getElementById('mobile-menu-button');
@@ -343,131 +267,66 @@ for train_idx, test_idx in loso_splitter.split(eeg_data):
             mobileMenu.classList.toggle('hidden');
         });
 
-        // Chart.js Implementations
-        // Chart 1: Model Accuracy
-        const modelAccuracyCtx = document.getElementById('modelAccuracyChart').getContext('2d');
-        new Chart(modelAccuracyCtx, {
-            type: 'bar',
-            data: {
-                labels: ['EEGNetv4', 'ContraNet', 'Conformer', 'EEGDeformer', 'EEGVIT'],
-                datasets: [{
-                    label: 'Public Labels Accuracy',
-                    data: [0.54, 0.41, 0.46, 0.47, 0.40], // From Imag2Emo, K-simple, Arousal
-                    backgroundColor: 'rgba(100, 116, 139, 0.6)', // slate-500
-                    borderColor: 'rgba(100, 116, 139, 1)',
-                    borderWidth: 1
-                }, {
-                    label: 'Private Labels Accuracy',
-                    data: [0.76, 0.75, 0.74, 0.70, 0.63], // From Imag2Emo, K-simple, Arousal
-                    backgroundColor: 'rgba(29, 78, 216, 0.6)', // blue-700
-                    borderColor: 'rgba(29, 78, 216, 1)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        max: 1.0,
-                        title: {
-                            display: true,
-                            text: 'Classification Accuracy'
-                        }
-                    }
-                },
-                plugins: {
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                let label = context.dataset.label || '';
-                                if (label) {
-                                    label += ': ';
-                                }
-                                if (context.parsed.y !== null) {
-                                    label += (context.parsed.y * 100).toFixed(1) + '%';
-                                }
-                                return label;
-                            }
-                        }
-                    }
-                }
-            }
+        // --- Main Dashboard Charts ---
+        const modelLabels = ['EEGNetv4', 'EEGDeformer', 'ContraNet', 'Conformer', 'EEGViT'];
+        const publicColor = 'rgba(100, 116, 139, 0.6)';
+        const privateColor = 'rgba(29, 78, 216, 0.6)';
+
+        // DEAP Valence
+        new Chart(document.getElementById('modelAccuracyDEAPValence').getContext('2d'), {
+            type: 'bar', data: { labels: modelLabels, datasets: [
+                { label: 'Public Accuracy', data: [0.54, 0.52, 0.54, 0.54, 0.52], backgroundColor: publicColor },
+                { label: 'Private Accuracy', data: [0.61, 0.55, 0.59, 0.59, 0.54], backgroundColor: privateColor }
+            ]}, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 1.0 } } }
         });
 
-        // Chart 2: Valence Transition
-        const valenceTransitionCtx = document.getElementById('valenceTransitionChart').getContext('2d');
-        new Chart(valenceTransitionCtx, {
-            type: 'doughnut',
-            data: {
-                labels: ['Low Valence -> Low Valence (Stability)', 'Low Valence -> High Valence (Transition)', 'High Valence -> High Valence (Stability)', 'High Valence -> Low Valence (Transition)'],
-                datasets: [{
-                    label: 'Label Transition',
-                    data: [63.1, 36.9, 71.7, 28.3], // From Table I
-                    backgroundColor: [
-                        'rgba(59, 130, 246, 0.7)', // blue-500
-                        'rgba(239, 68, 68, 0.5)',  // red-500 (transition)
-                        'rgba(34, 197, 94, 0.7)', // green-500
-                        'rgba(239, 68, 68, 0.5)'   // red-500 (transition)
-                    ],
-                    borderColor: '#fff',
-                    borderWidth: 2
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'top',
-                    },
-                    tooltip: {
-                         callbacks: {
-                            label: function(context) {
-                                return `${context.label}: ${context.raw}%`;
-                            }
-                        }
-                    }
-                }
-            }
+        // DEAP Arousal
+        new Chart(document.getElementById('modelAccuracyDEAPArousal').getContext('2d'), {
+            type: 'bar', data: { labels: modelLabels, datasets: [
+                { label: 'Public Accuracy', data: [0.54, 0.52, 0.55, 0.56, 0.52], backgroundColor: publicColor },
+                { label: 'Private Accuracy', data: [0.64, 0.59, 0.63, 0.63, 0.56], backgroundColor: privateColor }
+            ]}, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 1.0 } } }
         });
 
-        // Chart 3: Arousal Transition
-        const arousalTransitionCtx = document.getElementById('arousalTransitionChart').getContext('2d');
-        new Chart(arousalTransitionCtx, {
-            type: 'doughnut',
-            data: {
-                labels: ['Low Arousal -> Low Arousal (Stability)', 'Low Arousal -> High Arousal (Transition)', 'High Arousal -> High Arousal (Stability)', 'High Arousal -> Low Arousal (Transition)'],
-                datasets: [{
-                    label: 'Label Transition',
-                    data: [62.3, 37.7, 54.2, 45.8], // From Table I
-                    backgroundColor: [
-                        'rgba(59, 130, 246, 0.7)', // blue-500
-                        'rgba(239, 68, 68, 0.5)',  // red-500 (transition)
-                        'rgba(34, 197, 94, 0.7)', // green-500
-                        'rgba(239, 68, 68, 0.5)'   // red-500 (transition)
-                    ],
-                    borderColor: '#fff',
-                    borderWidth: 2
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'top',
-                    },
-                     tooltip: {
-                         callbacks: {
-                            label: function(context) {
-                                return `${context.label}: ${context.raw}%`;
-                            }
-                        }
-                    }
-                }
-            }
+        // Imag2Emo Valence
+        new Chart(document.getElementById('modelAccuracyImag2EmoValence').getContext('2d'), {
+            type: 'bar', data: { labels: modelLabels, datasets: [
+                { label: 'Public Accuracy', data: [0.52, 0.51, 0.52, 0.55, 0.49], backgroundColor: publicColor },
+                { label: 'Private Accuracy', data: [0.67, 0.62, 0.68, 0.66, 0.58], backgroundColor: privateColor }
+            ]}, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 1.0 } } }
+        });
+
+        // Imag2Emo Arousal
+        new Chart(document.getElementById('modelAccuracyImag2EmoArousal').getContext('2d'), {
+            type: 'bar', data: { labels: modelLabels, datasets: [
+                { label: 'Public Accuracy', data: [0.54, 0.49, 0.41, 0.46, 0.40], backgroundColor: publicColor },
+                { label: 'Private Accuracy', data: [0.76, 0.71, 0.76, 0.74, 0.64], backgroundColor: privateColor }
+            ]}, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 1.0 } } }
+        });
+
+        // Imag2Emo HNS
+        new Chart(document.getElementById('modelAccuracyImag2EmoHNS').getContext('2d'), {
+            type: 'bar', data: { labels: modelLabels, datasets: [
+                { label: 'Public Accuracy', data: [0.33, 0.34, 0.33, 0.32, 0.33], backgroundColor: publicColor },
+                { label: 'Private Accuracy', data: [0.31, 0.40, 0.42, 0.38, 0.39], backgroundColor: privateColor }
+            ]}, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 1.0 } } }
+        });
+        
+        // --- Subjectivity Doughnut Charts ---
+        new Chart(document.getElementById('valenceTransitionChartImag2Emo').getContext('2d'), {
+            type: 'doughnut', data: { labels: ['LV -> LV', 'LV -> HV', 'HV -> HV', 'HV -> LV'], datasets: [{ data: [63.1, 36.9, 71.7, 28.3], backgroundColor: ['#3B82F6', '#EF4444', '#22C55E', '#EF4444'] }] }, options: { responsive: true, maintainAspectRatio: false }
+        });
+        new Chart(document.getElementById('arousalTransitionChartImag2Emo').getContext('2d'), {
+            type: 'doughnut', data: { labels: ['LA -> LA', 'LA -> HA', 'HA -> HA', 'HA -> LA'], datasets: [{ data: [62.3, 37.7, 54.2, 45.8], backgroundColor: ['#3B82F6', '#EF4444', '#22C55E', '#EF4444'] }] }, options: { responsive: true, maintainAspectRatio: false }
+        });
+        new Chart(document.getElementById('valenceTransitionChartDEAP').getContext('2d'), {
+            type: 'doughnut', data: { labels: ['LV -> LV', 'LV -> HV', 'HV -> HV', 'HV -> LV'], datasets: [{ data: [65.5, 34.5, 82.4, 17.6], backgroundColor: ['#3B82F6', '#EF4444', '#22C55E', '#EF4444'] }] }, options: { responsive: true, maintainAspectRatio: false }
+        });
+        new Chart(document.getElementById('arousalTransitionChartDEAP').getContext('2d'), {
+            type: 'doughnut', data: { labels: ['LA -> LA', 'LA -> HA', 'HA -> HA', 'HA -> LA'], datasets: [{ data: [56.8, 43.2, 74.8, 25.2], backgroundColor: ['#3B82F6', '#EF4444', '#22C55E', '#EF4444'] }] }, options: { responsive: true, maintainAspectRatio: false }
+        });
+        new Chart(document.getElementById('hnsTransitionChartImag2Emo').getContext('2d'), {
+            type: 'doughnut', data: { labels: ['H->H', 'S->H', 'N->H', 'S->S', 'N->S', 'N->N'], datasets: [{ data: [57.04, 53.47, 53.75, 22.78, 23.47, 22.78], backgroundColor: ['#22C55E', '#F59E0B', '#FCD34D', '#3B82F6', '#60A5FA', '#93C5FD'] }] }, options: { responsive: true, maintainAspectRatio: false }
         });
         
         // --- Interactive Dashboard Logic ---
@@ -477,110 +336,100 @@ for train_idx, test_idx in loso_splitter.split(eeg_data):
         const modelSelect = document.getElementById('model-select');
         const resultsContainer = document.getElementById('results-container');
         const hnsOption = document.getElementById('hns-option');
-        let historyChart = null; // To hold the chart instance
+
+        function getDimensionFolder(dataset, dimension, labelType) {
+            if (dataset === 'DEAP') {
+                return labelType === 'PRIVATE' ? `${dimension}_privata` : `${dimension}_pubblica`;
+            }
+            if (dataset === 'Imag2Emo') { // Corresponds to GRAZ
+                if (labelType === 'PRIVATE') {
+                    if (dimension === 'valence') return 'rate_valence_privata';
+                    if (dimension === 'arousal') return 'rate_arousal_privato';
+                    if (dimension === 'hns') return 'discrete_emotions';
+                } else { // PUBLIC
+                    if (dimension === 'valence') return 'valence_pubblico';
+                    if (dimension === 'arousal') return 'arousal_pubblico';
+                    if (dimension === 'hns') return 'hns_pubblico';
+                }
+            }
+            return ''; // Fallback
+        }
+
+        function parseCSVToReportObject(csvText) {
+            const report = {};
+            const lines = csvText.trim().split('\n');
+            const dataLines = lines.slice(1); // Skip header
+            dataLines.forEach(line => {
+                const [key, precision, recall, f1, support] = line.split(',');
+                if (key && key.trim()) {
+                    report[key.trim()] = {
+                        precision: parseFloat(precision), recall: parseFloat(recall),
+                        'f1-score': parseFloat(f1), support: parseInt(support, 10)
+                    };
+                }
+            });
+            return report;
+        }
+        
+        function renderReportTable(reportData, containerId) {
+            const container = document.getElementById(containerId);
+            if (!reportData || typeof reportData !== 'object') {
+                container.innerHTML = '<p class="text-center text-slate-500">Could not render report table.</p>';
+                return;
+            }
+            const allLabels = Object.keys(reportData);
+
+            let tableHtml = `<div class="overflow-x-auto"><table class="w-full text-sm text-left">
+                <thead class="bg-slate-100"><tr>
+                    <th class="p-2"></th><th class="p-2">Precision</th><th class="p-2">Recall</th><th class="p-2">F1-Score</th><th class="p-2">Support</th>
+                </tr></thead><tbody>`;
+
+            allLabels.forEach(label => {
+                const stats = reportData[label];
+                const isAvg = label.includes('avg');
+                tableHtml += `<tr class="border-b ${isAvg ? 'bg-slate-50 font-bold' : ''}">
+                    <td class="p-2">${label}</td>
+                    <td class="p-2">${stats.precision.toFixed(2)}</td>
+                    <td class="p-2">${stats.recall.toFixed(2)}</td>
+                    <td class="p-2">${stats['f1-score'].toFixed(2)}</td>
+                    <td class="p-2">${stats.support}</td>
+                </tr>`;
+            });
+            
+            tableHtml += `</tbody></table></div>`;
+            container.innerHTML = tableHtml;
+        }
 
         function updateDashboard() {
             const dataset = datasetSelect.value;
             const labelType = labelTypeSelect.value;
             const dimension = dimensionSelect.value;
             const model = modelSelect.value;
-
             const datasetFolder = dataset === 'Imag2Emo' ? 'GRAZ' : 'DEAP';
             
-            let dimensionFolder = '';
-            if (dimension === 'hns') {
-                dimensionFolder = 'discrete_emotions';
-            } else {
-                const labelFolder = labelType === 'PUBLIC' ? `${dimension}_pubblica` : `${dimension}_privata`;
-                dimensionFolder = labelFolder;
-            }
-
-            // This path is based on your provided file structure.
-            // FIX: Prepended 'results/' to the base path.
-            const basePath = `results/${datasetFolder}/${labelType}/${dimensionFolder}/k_simple/${model}/scaling_ON/`;
+            const dimensionFolder = getDimensionFolder(dataset, dimension, labelType);
             
-            // Clear previous chart instance if it exists
-            if (historyChart) {
-                historyChart.destroy();
-            }
+            const basePathForImages = `results/${datasetFolder}/${labelType}/${dimensionFolder}/k_simple/${model}/scaling_ON/`;
+            const dataKey = `${datasetFolder}/${labelType}/${dimensionFolder}/k_simple/${model}/scaling_ON/`;
 
             resultsContainer.innerHTML = `
-                <div class="card">
-                    <h3 class="text-xl font-semibold text-slate-800 mb-4">Loss Curves</h3>
-                    <img src="${basePath}avg_curves.png" alt="Loss Curves" class="rounded-lg" onerror="this.src='https://placehold.co/600x400/f1f5f9/94a3b8?text=Image+Not+Found';">
-                </div>
-                <div class="card">
-                    <h3 class="text-xl font-semibold text-slate-800 mb-4">Confusion Matrix</h3>
-                    <img src="${basePath}confusion_matrix_fold_1.png" alt="Confusion Matrix" class="rounded-lg" onerror="this.src='https://placehold.co/600x400/f1f5f9/94a3b8?text=Image+Not+Found';">
-                </div>
-                <div class="card col-span-1 md:col-span-2">
-                    <h3 class="text-xl font-semibold text-slate-800 mb-4">Training History</h3>
-                    <div class="chart-container">
-                        <canvas id="historyChart"></canvas>
-                    </div>
-                    <p id="history-error" class="text-red-500 text-center mt-4 hidden">Could not load training history.</p>
+                <div class="card flex justify-center items-center relative">
+                    <h3 class="text-xl font-semibold text-slate-800 mb-4 absolute top-6">Curves</h3>
+                    <img src="${basePathForImages}avg_curves.png" alt="Curves" class="rounded-lg max-w-full h-auto" onerror="this.src='https://placehold.co/600x400/f1f5f9/94a3b8?text=Image+Not+Found';">
                 </div>
                 <div class="card col-span-1 md:col-span-2">
                     <h3 class="text-xl font-semibold text-slate-800 mb-4">Classification Report</h3>
-                    <pre id="report-container" class="bg-slate-100 p-4 rounded-lg overflow-x-auto text-sm">Loading report...</pre>
+                    <div id="report-container"><p class="text-center text-slate-500">Loading report...</p></div>
                 </div>
             `;
-
-            fetch(`${basePath}history_fold_1.json`)
-                .then(response => {
-                    if (!response.ok) throw new Error('Network response was not ok');
-                    return response.json();
-                })
-                .then(data => {
-                    document.getElementById('history-error').classList.add('hidden');
-                    const historyCtx = document.getElementById('historyChart').getContext('2d');
-                    historyChart = new Chart(historyCtx, {
-                        type: 'line',
-                        data: {
-                            labels: data.accuracy.map((_, i) => i + 1),
-                            datasets: [
-                                {
-                                    label: 'Training Accuracy',
-                                    data: data.accuracy,
-                                    borderColor: 'rgba(29, 78, 216, 1)',
-                                    tension: 0.1,
-                                    fill: false,
-                                },
-                                {
-                                    label: 'Validation Accuracy',
-                                    data: data.val_accuracy,
-                                    borderColor: 'rgba(219, 39, 119, 1)',
-                                    tension: 0.1,
-                                    fill: false,
-                                }
-                            ]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            scales: {
-                                y: { beginAtZero: true, title: { display: true, text: 'Accuracy' } },
-                                x: { title: { display: true, text: 'Epoch' } }
-                            }
-                        }
-                    });
-                }).catch(error => {
-                     console.error('Error fetching history:', error);
-                     document.getElementById('historyChart').style.display = 'none';
-                     document.getElementById('history-error').classList.remove('hidden');
-                });
-
-            fetch(`${basePath}report_fold_1.json`)
-                .then(response => {
-                    if (!response.ok) throw new Error('Network response was not ok');
-                    return response.json();
-                })
-                .then(data => {
-                    document.getElementById('report-container').textContent = JSON.stringify(data, null, 2);
-                }).catch(error => {
-                    console.error('Error fetching report:', error);
-                    document.getElementById('report-container').textContent = 'Could not load classification report.';
-                });
+            
+            if (typeof allReportsData !== 'undefined' && allReportsData[dataKey]) {
+                const csvText = allReportsData[dataKey];
+                const reportData = parseCSVToReportObject(csvText);
+                renderReportTable(reportData, 'report-container');
+            } else {
+                document.getElementById('report-container').innerHTML = `<p class="text-center text-amber-600">No embedded data found for this selection.</p>`;
+            }
         }
 
         function handleDatasetChange() {
