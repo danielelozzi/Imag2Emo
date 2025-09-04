@@ -2,11 +2,15 @@
 
 ## Overview
 
-This project provides a comprehensive and configurable Python-based pipeline for EEG-based affective computing research. It handles the entire workflow from raw data processing to model training, hyperparameter optimization (HPO), and detailed reporting. The pipeline is designed to be modular and extensible, supporting multiple datasets (DEAP, GRAZ), various deep learning models, and flexible training scenarios.
+This project provides a comprehensive and configurable Python-based pipeline for EEG-based affective computing research. It handles the entire workflow from raw data processing to model training, hyperparameter optimization (HPO), and detailed reporting. The pipeline is designed to be modular and extensible, supporting multiple datasets (DEAP, Imag2emo), various deep learning models, and flexible training scenarios.
+
+The "code_HNS" folder contains code for traning Imag2emo with HNS labels.
+The "code_arousal_valence" contains code for training DEAP, Preprocessed DEAP and Imag2emo with Arousal and Valence labels.
+
 
 ## Features
 
--   **Multi-Dataset Support**: Includes preprocessing scripts for the DEAP (from both `.dat` and `.set` files) and GRAZ datasets.
+-   **Multi-Dataset Support**: Includes preprocessing scripts for the DEAP (from both `.dat` and `.set` files) and Imag2emo datasets.
 -   **Flexible Data Preparation**: Configurable data segmentation, resampling, band-pass filtering, and channel selection.
 -   **Advanced Training Scenarios**: Supports multiple cross-validation strategies:
 -   **Multi-Class Classification**: Supports both binary classification (e.g., High/Low Valence) and 4-class classification based on the Valence-Arousal model (HVHA, HVLA, LVHA, LVLA).
@@ -49,9 +53,9 @@ The project is organized into several key Python scripts, each with a specific r
     -   **Role**: Initial data converters for the DEAP dataset.
     -   **Functionality**: These scripts handle the initial conversion of the raw DEAP dataset files (`.set` or `.dat` pickle files) into a standardized `.npy` format. They extract EEG data and corresponding labels (both public and private ratings).
 
--   `processa_graz.py`
-    -   **Role**: Initial data converter for the GRAZ dataset.
-    -   **Functionality**: This script converts the raw GRAZ dataset files (`.set` and `.csv` labels) into the standardized `.npy` format, including logic to exclude specific trials based on a list of similar images.
+-   `processa_Imag2emo.py`
+    -   **Role**: Initial data converter for the Imag2emo dataset.
+    -   **Functionality**: This script converts the raw Imag2emo dataset files (`.set` and `.csv` labels) into the standardized `.npy` format, including logic to exclude specific trials based on a list of similar images.
 
 -   `reporting.py`
     -   **Role**: A utility module for generating all visual and text-based reports.
@@ -65,14 +69,14 @@ The pipeline is orchestrated by `main.py` and follows these steps:
 
 1.  **Configuration**: The user sets up global parameters, file paths, and pipeline control switches (e.g., `RUN_DISK_SEGMENTATION`, `RUN_HPO`) directly in `main.py`. This includes defining the datasets, models, and scenarios to run.
 
-2.  **Initial Data Processing (Optional)**: If `RUN_DISK_SEGMENTATION` is `True`, the `processa_*.py` scripts are executed. They convert the raw dataset files (DEAP, GRAZ) into an intermediate `.npy` format, where each file typically represents one trial for one subject. This step only needs to be run once.
+2.  **Initial Data Processing (Optional)**: If `RUN_DISK_SEGMENTATION` is `True`, the `processa_*.py` scripts are executed. They convert the raw dataset files (DEAP, Imag2emo) into an intermediate `.npy` format, where each file typically represents one trial for one subject. This step only needs to be run once.
 
 3.  **Segment Generation (Optional)**: Next, `prepare_training_segments.py` is called. It loads the intermediate `.npy` files, applies global preprocessing like resampling or filtering, and slices the data into the final training windows (e.g., 2-second segments). These segments are saved to a disk cache to speed up subsequent runs. This step also only needs to be run once.
 
 4.  **Hyperparameter Optimization (Optional)**: If `RUN_HPO` is `True`, the pipeline initiates an Optuna study for each dataset. It uses a subset of the data and a simplified training scenario (`k_simple`) to efficiently find the best hyperparameters (e.g., learning rate, dropout). The best parameters found are saved to a `hpo_best_params.json` file. If `RUN_HPO` is `False`, the pipeline attempts to load these parameters from the JSON file instead.
 
-5.  **Full Training & Evaluation**: This is the main experimental phase. The pipeline iterates through all configured combinations (e.g., `[GRAZ]-[PRIVATE]-[valence]-[loso]-[EEGNetv4]`).
-    -   **2-Class**: `[GRAZ]-[PRIVATE]-[valence]-[loso]-[EEGNetv4]`
+5.  **Full Training & Evaluation**: This is the main experimental phase. The pipeline iterates through all configured combinations (e.g., `[Imag2emo]-[PRIVATE]-[valence]-[loso]-[EEGNetv4]`).
+    -   **2-Class**: `[Imag2emo]-[PRIVATE]-[valence]-[loso]-[EEGNetv4]`
     -   **4-Class**: `[DEAP_BDF]-[PUBLIC]-[valence_arousal_4class]-[kfold]-[EEGNetv4]`
     -   For each combination, it uses `get_data_splits` from `data_loader.py` to yield the train/validation/test sets for the current fold or run.
     -   It then calls `train_and_evaluate_model`, which performs the training using the best hyperparameters found during HPO (or defaults).
