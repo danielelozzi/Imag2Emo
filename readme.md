@@ -2,7 +2,9 @@
 
 ## Overview
 
-This project provides a comprehensive and configurable Python-based pipeline for EEG-based affective computing research. It handles the entire workflow from raw data processing to model training, hyperparameter optimization (HPO), and detailed reporting. The pipeline is designed to be modular and extensible, supporting multiple datasets (DEAP, Imag2emo), various deep learning models, and flexible training scenarios.
+This project provides a comprehensive and configurable Python-based pipeline for EEG-based affective computing research. It handles the entire workflow from raw data processing to model training, and detailed reporting. The pipeline is designed to be modular and extensible, supporting multiple datasets (DEAP, Imag2emo), various deep learning models, and flexible training scenarios.
+
+**Optionally**: hyperparameter optimization (HPO)
 
 The "code_HNS" folder contains code for traning Imag2emo with HNS labels.
 The "code_arousal_valence" contains code for training DEAP, Preprocessed DEAP and Imag2emo with Arousal and Valence labels.
