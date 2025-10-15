@@ -116,37 +116,6 @@ Standardized Labels</h1>
                         <li><span class="font-semibold">EEG-deformer:</span> A dense convolutional transformer for detecting cognitive attention and mental workload.</li>
                     </ul>
                 </div>
-                <!-- Label Subjectivity Charts -->
-                <div class="card">
-                    <h3 class="text-xl font-semibold text-slate-800 mb-4 text-center">Label Subjectivity: Valence (Imag2Emo)</h3>
-                    <div class="chart-container">
-                        <canvas id="valenceTransitionChartImag2Emo"></canvas>
-                    </div>
-                </div>
-                <div class="card">
-                    <h3 class="text-xl font-semibold text-slate-800 mb-4 text-center">Label Subjectivity: Arousal (Imag2Emo)</h3>
-                    <div class="chart-container">
-                        <canvas id="arousalTransitionChartImag2Emo"></canvas>
-                    </div>
-                </div>
-                 <div class="card">
-                    <h3 class="text-xl font-semibold text-slate-800 mb-4 text-center">Label Subjectivity: Valence (DEAP)</h3>
-                    <div class="chart-container">
-                        <canvas id="valenceTransitionChartDEAP"></canvas>
-                    </div>
-                </div>
-                <div class="card">
-                    <h3 class="text-xl font-semibold text-slate-800 mb-4 text-center">Label Subjectivity: Arousal (DEAP)</h3>
-                    <div class="chart-container">
-                        <canvas id="arousalTransitionChartDEAP"></canvas>
-                    </div>
-                </div>
-                <div class="card col-span-1 lg:col-span-2">
-                    <h3 class="text-xl font-semibold text-slate-800 mb-4 text-center">Label Subjectivity: HNS (Imag2Emo)</h3>
-                    <div class="chart-container">
-                        <canvas id="hnsTransitionChartImag2Emo"></canvas>
-                    </div>
-                </div>
 
             </div>
         </section>
@@ -271,23 +240,6 @@ Standardized Labels</h1>
                 { label: 'Public Accuracy', data: [0.33, 0.34, 0.33, 0.32, 0.33], backgroundColor: publicColor },
                 { label: 'Private Accuracy', data: [0.31, 0.40, 0.42, 0.38, 0.39], backgroundColor: privateColor }
             ]}, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 1.0 } } }
-        });
-        
-        // --- Subjectivity Doughnut Charts ---
-        new Chart(document.getElementById('valenceTransitionChartImag2Emo').getContext('2d'), {
-            type: 'doughnut', data: { labels: ['LV -> LV', 'LV -> HV', 'HV -> HV', 'HV -> LV'], datasets: [{ data: [63.1, 36.9, 71.7, 28.3], backgroundColor: ['#3B82F6', '#EF4444', '#22C55E', '#EF4444'] }] }, options: { responsive: true, maintainAspectRatio: false }
-        });
-        new Chart(document.getElementById('arousalTransitionChartImag2Emo').getContext('2d'), {
-            type: 'doughnut', data: { labels: ['LA -> LA', 'LA -> HA', 'HA -> HA', 'HA -> LA'], datasets: [{ data: [62.3, 37.7, 54.2, 45.8], backgroundColor: ['#3B82F6', '#EF4444', '#22C55E', '#EF4444'] }] }, options: { responsive: true, maintainAspectRatio: false }
-        });
-        new Chart(document.getElementById('valenceTransitionChartDEAP').getContext('2d'), {
-            type: 'doughnut', data: { labels: ['LV -> LV', 'LV -> HV', 'HV -> HV', 'HV -> LV'], datasets: [{ data: [65.5, 34.5, 82.4, 17.6], backgroundColor: ['#3B82F6', '#EF4444', '#22C55E', '#EF4444'] }] }, options: { responsive: true, maintainAspectRatio: false }
-        });
-        new Chart(document.getElementById('arousalTransitionChartDEAP').getContext('2d'), {
-            type: 'doughnut', data: { labels: ['LA -> LA', 'LA -> HA', 'HA -> HA', 'HA -> LA'], datasets: [{ data: [56.8, 43.2, 74.8, 25.2], backgroundColor: ['#3B82F6', '#EF4444', '#22C55E', '#EF4444'] }] }, options: { responsive: true, maintainAspectRatio: false }
-        });
-        new Chart(document.getElementById('hnsTransitionChartImag2Emo').getContext('2d'), {
-            type: 'doughnut', data: { labels: ['H->H', 'S->H', 'N->H', 'S->S', 'N->S', 'N->N'], datasets: [{ data: [57.04, 53.47, 53.75, 22.78, 23.47, 22.78], backgroundColor: ['#22C55E', '#F59E0B', '#FCD34D', '#3B82F6', '#60A5FA', '#93C5FD'] }] }, options: { responsive: true, maintainAspectRatio: false }
         });
         
         // --- Interactive Dashboard Logic ---
