@@ -101,6 +101,8 @@ Standardized Labels</h1>
                         <div class="p-3 bg-slate-100 rounded-lg">4-64 Hz Filtering</div>
                          <div class="text-slate-400 font-bold text-2xl">&rarr;</div>
                         <div class="p-3 bg-slate-100 rounded-lg">Epoching (-1s to +3s)</div>
+                         <div class="text-slate-400 font-bold text-2xl">&rarr;</div>
+                        <div class="p-3 bg-slate-100 rounded-lg">Scaling</div>
                     </div>
                 </div>
                 
@@ -124,7 +126,7 @@ Standardized Labels</h1>
         <section id="interactive-dashboard" class="mb-24 interactive-dashboard">
             <h2 class="section-title"></h2>
             <div class="card">
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
                     <div>
                         <label for="dataset-select" class="block text-sm font-medium text-slate-600 mb-1">Dataset</label>
                         <select id="dataset-select">
@@ -148,6 +150,14 @@ Standardized Labels</h1>
                         </select>
                     </div>
                     <div>
+                        <label for="validation-select" class="block text-sm font-medium text-slate-600 mb-1">Validation</label>
+                        <select id="validation-select">
+                            <option value="k_simple">Simple K-Fold</option>
+                            <option value="loso">LOSO</option>
+                            <option value="kfold">K-Fold (Sub-split)</option>
+                        </select>
+                    </div>
+                    <div>
                         <label for="model-select" class="block text-sm font-medium text-slate-600 mb-1">Model</label>
                         <select id="model-select">
                             <option value="EEGNetv4">EEGNetv4</option>
@@ -158,7 +168,7 @@ Standardized Labels</h1>
                         </select>
                     </div>
                 </div>
-                <div id="results-container" class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div id="results-container" class="grid grid-cols-1 md:grid-cols-3 gap-8">
                     <!-- Results will be dynamically loaded here -->
                 </div>
             </div>
@@ -198,6 +208,7 @@ Standardized Labels</h1>
         const datasetSelect = document.getElementById('dataset-select');
         const labelTypeSelect = document.getElementById('label-type-select');
         const dimensionSelect = document.getElementById('dimension-select');
+        const validationSelect = document.getElementById('validation-select');
         const modelSelect = document.getElementById('model-select');
         const resultsContainer = document.getElementById('results-container');
         const hnsOption = document.getElementById('hns-option');
@@ -226,15 +237,33 @@ Standardized Labels</h1>
         }
 
         function parseCSVToReportObject(csvText) {
+            // Funzione robusta per parsare il formato CSV specifico con medie e std.
             const report = {};
             const lines = csvText.trim().split('\n');
-            const dataLines = lines.slice(1); // Skip header
+            
+            // Salta le prime due righe di intestazione
+            if (lines.length < 3) return {};
+
+            const dataLines = lines.slice(2); 
+
             dataLines.forEach(line => {
-                const [key, precision, recall, f1, support] = line.split(',');
-                if (key && key.trim()) {
-                    report[key.trim()] = {
-                        precision: parseFloat(precision), recall: parseFloat(recall),
-                        'f1-score': parseFloat(f1), support: parseInt(support, 10)
+                const values = line.split(',');
+                if (values.length < 7) return; // Salta righe malformate o vuote
+
+                const key = values[0].trim();
+                if (key) {
+                    // Le colonne sono: key, precision_mean, precision_std, recall_mean, recall_std, f1_mean, f1_std, support
+                    const precision = parseFloat(values[1]);
+                    const recall = parseFloat(values[3]);
+                    const f1 = parseFloat(values[5]);
+                    // Il supporto potrebbe non essere presente per tutte le righe (es. medie)
+                    const support = values.length > 7 ? parseInt(values[7], 10) : NaN;
+
+                    report[key] = {
+                        precision: isNaN(precision) ? 0 : precision,
+                        recall: isNaN(recall) ? 0 : recall,
+                        'f1-score': isNaN(f1) ? 0 : f1,
+                        support: isNaN(support) ? '' : support
                     };
                 }
             });
@@ -243,11 +272,12 @@ Standardized Labels</h1>
         
         function renderReportTable(reportData, containerId) {
             const container = document.getElementById(containerId);
-            if (!reportData || typeof reportData !== 'object') {
-                container.innerHTML = '<p class="text-center text-slate-500">Could not render report table.</p>';
+            const allLabels = Object.keys(reportData);
+
+            if (!reportData || allLabels.length === 0) {
+                container.innerHTML = '<p class="text-center text-amber-600">Could not parse or render report data.</p>';
                 return;
             }
-            const allLabels = Object.keys(reportData);
 
             let tableHtml = `<div class="overflow-x-auto"><table class="w-full text-sm text-left">
                 <thead class="bg-slate-100"><tr>
@@ -262,7 +292,7 @@ Standardized Labels</h1>
                     <td class="p-2">${stats.precision.toFixed(2)}</td>
                     <td class="p-2">${stats.recall.toFixed(2)}</td>
                     <td class="p-2">${stats['f1-score'].toFixed(2)}</td>
-                    <td class="p-2">${stats.support}</td>
+                    <td class="p-2">${stats.support || ''}</td>
                 </tr>`;
             });
             
@@ -274,12 +304,12 @@ Standardized Labels</h1>
             const dataset = datasetSelect.value;
             const labelType = labelTypeSelect.value;
             const dimension = dimensionSelect.value;
+            const validation = validationSelect.value;
             const model = modelSelect.value;
             const datasetFolder = dataset === 'Imag2Emo' ? 'GRAZ' : 'DEAP';
             
-            // Costruisce il percorso relativo che verrà passato a get_data.php
             const dimensionFolder = getDimensionFolder(dataset, dimension, labelType);
-            const basePath = `${datasetFolder}/${labelType}/${dimensionFolder}/k_simple/${model}/scaling_ON`;
+            const basePath = `${datasetFolder}/${labelType}/${dimensionFolder}/${validation}/${model}/scaling_ON`;
 
             // URL per l'immagine delle curve
             const imageUrl = `get_data.php?path=${encodeURIComponent(basePath + '/avg_curves.png')}`;
@@ -330,6 +360,7 @@ Standardized Labels</h1>
         datasetSelect.addEventListener('change', handleDatasetChange);
         labelTypeSelect.addEventListener('change', updateDashboard);
         dimensionSelect.addEventListener('change', updateDashboard);
+        validationSelect.addEventListener('change', updateDashboard);
         modelSelect.addEventListener('change', updateDashboard);
 
         // Initial setup
