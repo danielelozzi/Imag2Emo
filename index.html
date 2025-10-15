@@ -251,18 +251,20 @@ Standardized Labels</h1>
         const hnsOption = document.getElementById('hns-option');
 
         function getDimensionFolder(dataset, dimension, labelType) {
+            // La logica per i percorsi deve corrispondere esattamente alla struttura delle cartelle dei risultati.
             if (dataset === 'DEAP') {
-                return labelType === 'PRIVATE' ? `${dimension}_privata` : `${dimension}_pubblica`;
+                // Per DEAP, il tipo di label è già nel percorso (es. /DEAP/PRIVATE/...)
+                // e la cartella della dimensione è semplicemente 'valence' o 'arousal'.
+                return dimension;
             }
             if (dataset === 'Imag2Emo') { // Corresponds to GRAZ
-                if (labelType === 'PRIVATE') {
-                    if (dimension === 'valence') return 'rate_valence_privata';
-                    if (dimension === 'arousal') return 'rate_arousal_privato';
-                    if (dimension === 'hns') return 'discrete_emotions';
-                } else { // PUBLIC
-                    if (dimension === 'valence') return 'valence_pubblico';
-                    if (dimension === 'arousal') return 'arousal_pubblico';
-                    if (dimension === 'hns') return 'hns_pubblico';
+                // Per Imag2Emo (GRAZ), la struttura è diversa e include il tipo di label nel nome della cartella.
+                if (dimension === 'hns') {
+                    // La cartella HNS ha un nome specifico.
+                    return labelType === 'PRIVATE' ? 'hns_private' : 'hns_public';
+                } else {
+                    // Per valence e arousal, il formato è 'dimensione_tipolabel'.
+                    return `${dimension}_${labelType.toLowerCase()}`;
                 }
             }
             return ''; // Fallback
@@ -320,8 +322,8 @@ Standardized Labels</h1>
             const model = modelSelect.value;
             const datasetFolder = dataset === 'Imag2Emo' ? 'GRAZ' : 'DEAP';
             
-            const dimensionFolder = getDimensionFolder(dataset, dimension, labelType);
-            
+            // Il percorso per i dati e le immagini deve essere costruito con precisione.
+            const dimensionFolder = getDimensionFolder(dataset, dimension, labelType); // Funzione corretta
             const basePathForImages = `results/${datasetFolder}/${labelType}/${dimensionFolder}/k_simple/${model}/scaling_ON/`;
             const dataKey = `${datasetFolder}/${labelType}/${dimensionFolder}/k_simple/${model}/scaling_ON/`;
 
