@@ -186,9 +186,6 @@ Standardized Labels</h1>
         </div>
     </footer>
 
-    <!-- The generated data will be loaded from this file -->
-    <script src="embedded_data.js"></script>
-
     <script>
         // Mobile Menu Toggle
         const mobileMenuButton = document.getElementById('mobile-menu-button');
@@ -197,51 +194,6 @@ Standardized Labels</h1>
             mobileMenu.classList.toggle('hidden');
         });
 
-        // --- Main Dashboard Charts ---
-        const modelLabels = ['EEGNetv4', 'EEGDeformer', 'ContraNet', 'Conformer', 'EEGViT'];
-        const publicColor = 'rgba(100, 116, 139, 0.6)';
-        const privateColor = 'rgba(29, 78, 216, 0.6)';
-
-        // DEAP Valence
-        new Chart(document.getElementById('modelAccuracyDEAPValence').getContext('2d'), {
-            type: 'bar', data: { labels: modelLabels, datasets: [
-                { label: 'Public Accuracy', data: [0.54, 0.52, 0.54, 0.54, 0.52], backgroundColor: publicColor },
-                { label: 'Private Accuracy', data: [0.61, 0.55, 0.59, 0.59, 0.54], backgroundColor: privateColor }
-            ]}, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 1.0 } } }
-        });
-
-        // DEAP Arousal
-        new Chart(document.getElementById('modelAccuracyDEAPArousal').getContext('2d'), {
-            type: 'bar', data: { labels: modelLabels, datasets: [
-                { label: 'Public Accuracy', data: [0.54, 0.52, 0.55, 0.56, 0.52], backgroundColor: publicColor },
-                { label: 'Private Accuracy', data: [0.64, 0.59, 0.63, 0.63, 0.56], backgroundColor: privateColor }
-            ]}, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 1.0 } } }
-        });
-
-        // Imag2Emo Valence
-        new Chart(document.getElementById('modelAccuracyImag2EmoValence').getContext('2d'), {
-            type: 'bar', data: { labels: modelLabels, datasets: [
-                { label: 'Public Accuracy', data: [0.52, 0.51, 0.52, 0.55, 0.49], backgroundColor: publicColor },
-                { label: 'Private Accuracy', data: [0.67, 0.62, 0.68, 0.66, 0.58], backgroundColor: privateColor }
-            ]}, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 1.0 } } }
-        });
-
-        // Imag2Emo Arousal
-        new Chart(document.getElementById('modelAccuracyImag2EmoArousal').getContext('2d'), {
-            type: 'bar', data: { labels: modelLabels, datasets: [
-                { label: 'Public Accuracy', data: [0.54, 0.49, 0.41, 0.46, 0.40], backgroundColor: publicColor },
-                { label: 'Private Accuracy', data: [0.76, 0.71, 0.76, 0.74, 0.64], backgroundColor: privateColor }
-            ]}, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 1.0 } } }
-        });
-
-        // Imag2Emo HNS
-        new Chart(document.getElementById('modelAccuracyImag2EmoHNS').getContext('2d'), {
-            type: 'bar', data: { labels: modelLabels, datasets: [
-                { label: 'Public Accuracy', data: [0.33, 0.34, 0.33, 0.32, 0.33], backgroundColor: publicColor },
-                { label: 'Private Accuracy', data: [0.31, 0.40, 0.42, 0.38, 0.39], backgroundColor: privateColor }
-            ]}, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 1.0 } } }
-        });
-        
         // --- Interactive Dashboard Logic ---
         const datasetSelect = document.getElementById('dataset-select');
         const labelTypeSelect = document.getElementById('label-type-select');
@@ -251,20 +203,23 @@ Standardized Labels</h1>
         const hnsOption = document.getElementById('hns-option');
 
         function getDimensionFolder(dataset, dimension, labelType) {
-            // La logica per i percorsi deve corrispondere esattamente alla struttura delle cartelle dei risultati.
+            // Logica per costruire i nomi delle cartelle in base alle selezioni.
+            // Deve corrispondere esattamente alla struttura delle cartelle dei risultati.
             if (dataset === 'DEAP') {
-                // Per DEAP, il tipo di label è già nel percorso (es. /DEAP/PRIVATE/...)
-                // e la cartella della dimensione è semplicemente 'valence' o 'arousal'.
-                return dimension;
+                // Esempio: DEAP, PRIVATE, arousal -> arousal_privata
+                const suffix = labelType === 'PRIVATE' ? 'privata' : 'pubblica';
+                return `${dimension}_${suffix}`;
             }
             if (dataset === 'Imag2Emo') { // Corresponds to GRAZ
-                // Per Imag2Emo (GRAZ), la struttura è diversa e include il tipo di label nel nome della cartella.
                 if (dimension === 'hns') {
-                    // La cartella HNS ha un nome specifico.
-                    return labelType === 'PRIVATE' ? 'hns_private' : 'hns_public';
+                    // Esempio: Imag2Emo, PRIVATE, hns -> discrete_emotions
+                    return labelType === 'PRIVATE' ? 'discrete_emotions' : 'hns_pubblico';
                 } else {
-                    // Per valence e arousal, il formato è 'dimensione_tipolabel'.
-                    return `${dimension}_${labelType.toLowerCase()}`;
+                    // Esempio: Imag2Emo, PRIVATE, valence -> rate_valence_privata
+                    // Esempio: Imag2Emo, PUBLIC, valence -> valence_pubblico
+                    const suffix = labelType === 'PRIVATE' ? 'privata' : 'pubblico';
+                    const prefix = (labelType === 'PRIVATE' && dimension !== 'hns') ? 'rate_' : '';
+                    return `${prefix}${dimension}_${suffix}`;
                 }
             }
             return ''; // Fallback
@@ -322,29 +277,42 @@ Standardized Labels</h1>
             const model = modelSelect.value;
             const datasetFolder = dataset === 'Imag2Emo' ? 'GRAZ' : 'DEAP';
             
-            // Il percorso per i dati e le immagini deve essere costruito con precisione.
-            const dimensionFolder = getDimensionFolder(dataset, dimension, labelType); // Funzione corretta
-            const basePathForImages = `results/${datasetFolder}/${labelType}/${dimensionFolder}/k_simple/${model}/scaling_ON/`;
-            const dataKey = `${datasetFolder}/${labelType}/${dimensionFolder}/k_simple/${model}/scaling_ON/`;
+            // Costruisce il percorso relativo che verrà passato a get_data.php
+            const dimensionFolder = getDimensionFolder(dataset, dimension, labelType);
+            const basePath = `${datasetFolder}/${labelType}/${dimensionFolder}/k_simple/${model}/scaling_ON`;
+
+            // URL per l'immagine delle curve
+            const imageUrl = `get_data.php?path=${encodeURIComponent(basePath + '/avg_curves.png')}`;
+            // URL per il report CSV
+            const reportUrl = `get_data.php?path=${encodeURIComponent(basePath + '/summary_metrics_per_classe.csv')}`;
 
             resultsContainer.innerHTML = `
                 <div class="card flex justify-center items-center relative">
                     <h3 class="text-xl font-semibold text-slate-800 mb-4 absolute top-6">Curves</h3>
-                    <img src="${basePathForImages}avg_curves.png" alt="Curves" class="rounded-lg max-w-full h-auto" onerror="this.src='https://placehold.co/600x400/f1f5f9/94a3b8?text=Image+Not+Found';">
+                    <img src="${imageUrl}" alt="Curves" class="rounded-lg max-w-full h-auto" onerror="this.src='https://placehold.co/600x400/f1f5f9/94a3b8?text=Image+Not+Found'; this.onerror=null;">
                 </div>
                 <div class="card col-span-1 md:col-span-2">
                     <h3 class="text-xl font-semibold text-slate-800 mb-4">Classification Report</h3>
                     <div id="report-container"><p class="text-center text-slate-500">Loading report...</p></div>
                 </div>
             `;
-            
-            if (typeof allReportsData !== 'undefined' && allReportsData[dataKey]) {
-                const csvText = allReportsData[dataKey];
-                const reportData = parseCSVToReportObject(csvText);
-                renderReportTable(reportData, 'report-container');
-            } else {
-                document.getElementById('report-container').innerHTML = `<p class="text-center text-amber-600">No embedded data found for this selection.</p>`;
-            }
+
+            // Esegue la fetch per recuperare e renderizzare il report
+            fetch(reportUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.text();
+                })
+                .then(csvText => {
+                    const reportData = parseCSVToReportObject(csvText);
+                    renderReportTable(reportData, 'report-container');
+                })
+                .catch(error => {
+                    console.error("Error fetching report:", error);
+                    document.getElementById('report-container').innerHTML = `<p class="text-center text-amber-600">Could not load report data for this selection.</p>`;
+                });
         }
 
         function handleDatasetChange() {
