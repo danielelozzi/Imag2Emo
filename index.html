@@ -84,39 +84,38 @@ Standardized Labels</h1>
         <section id="dashboard" class="mb-24">
             <h2 class="section-title">Results Dashboard</h2>
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-
-                <!-- Model Accuracy Charts -->
-                <div class="card col-span-1 lg:col-span-2">
-                    <h3 class="text-xl font-semibold text-slate-800 mb-4 text-center">DEAP: Model Accuracy for Valence</h3>
-                    <div class="chart-container">
-                        <canvas id="modelAccuracyDEAPValence"></canvas>
+                <!-- Methodology & Code Section -->
+                <div class="card md:col-span-2">
+                    <h3 class="text-xl font-semibold text-slate-800 mb-4">EEG Data Preprocessing Pipeline</h3>
+                    <div class="flex flex-wrap items-center justify-center text-center gap-2">
+                        <div class="p-3 bg-slate-100 rounded-lg">Signal Acquisition</div>
+                        <div class="text-slate-400 font-bold text-2xl">&rarr;</div>
+                        <div class="p-3 bg-slate-100 rounded-lg">1-100 Hz Filtering</div>
+                        <div class="text-slate-400 font-bold text-2xl">&rarr;</div>
+                        <div class="p-3 bg-slate-100 rounded-lg">PREP Pipeline</div>
+                        <div class="text-slate-400 font-bold text-2xl">&rarr;</div>
+                        <div class="p-3 bg-slate-100 rounded-lg">ICA (Extended Infomax)</div>
+                        <div class="text-slate-400 font-bold text-2xl">&rarr;</div>
+                        <div class="p-3 bg-slate-100 rounded-lg">Remove Artifacts (ICLabel)</div>
+                         <div class="text-slate-400 font-bold text-2xl">&rarr;</div>
+                        <div class="p-3 bg-slate-100 rounded-lg">4-64 Hz Filtering</div>
+                         <div class="text-slate-400 font-bold text-2xl">&rarr;</div>
+                        <div class="p-3 bg-slate-100 rounded-lg">Epoching (-1s to +3s)</div>
                     </div>
                 </div>
-                <div class="card col-span-1 lg:col-span-2">
-                    <h3 class="text-xl font-semibold text-slate-800 mb-4 text-center">DEAP: Model Accuracy for Arousal</h3>
-                    <div class="chart-container">
-                        <canvas id="modelAccuracyDEAPArousal"></canvas>
-                    </div>
+                
+                <!-- DL Architectures -->
+                <div class="card md:col-span-2">
+                    <h3 class="text-xl font-semibold text-slate-800 mb-4">Deep Learning Architectures</h3>
+                    <p class="text-slate-600 mb-4">We employed a suite of state-of-the-art DL models designed for EEG signal processing to ensure a robust analysis.</p>
+                    <ul class="list-disc list-inside space-y-2 text-slate-600">
+                        <li><span class="font-semibold">EEGNetv4:</span> A compact CNN for EEG-based BCIs, effective at capturing temporal and spatial features.</li>
+                        <li><span class="font-semibold">ContraNet:</span> A hybrid network designed for classifying EEG and EMG signals, especially with limited data.</li>
+                        <li><span class="font-semibold">Conformer:</span> A model combining convolution and transformers, tailored for motor imagery and emotion paradigms.</li>
+                        <li><span class="font-semibold">EEGVIT:</span> A Vision Transformer (ViT) based architecture adapted for visual task EEG data.</li>
+                        <li><span class="font-semibold">EEG-deformer:</span> A dense convolutional transformer for detecting cognitive attention and mental workload.</li>
+                    </ul>
                 </div>
-                <div class="card col-span-1 lg:col-span-2">
-                    <h3 class="text-xl font-semibold text-slate-800 mb-4 text-center">Imag2Emo: Model Accuracy for Valence</h3>
-                    <div class="chart-container">
-                        <canvas id="modelAccuracyImag2EmoValence"></canvas>
-                    </div>
-                </div>
-                <div class="card col-span-1 lg:col-span-2">
-                    <h3 class="text-xl font-semibold text-slate-800 mb-4 text-center">Imag2Emo: Model Accuracy for Arousal</h3>
-                    <div class="chart-container">
-                        <canvas id="modelAccuracyImag2EmoArousal"></canvas>
-                    </div>
-                </div>
-                <div class="card col-span-1 lg:col-span-2">
-                    <h3 class="text-xl font-semibold text-slate-800 mb-4 text-center">Imag2Emo: Model Accuracy for HNS</h3>
-                    <div class="chart-container">
-                        <canvas id="modelAccuracyImag2EmoHNS"></canvas>
-                    </div>
-                </div>
-
                 <!-- Label Subjectivity Charts -->
                 <div class="card">
                     <h3 class="text-xl font-semibold text-slate-800 mb-4 text-center">Label Subjectivity: Valence (Imag2Emo)</h3>
@@ -192,45 +191,6 @@ Standardized Labels</h1>
                 </div>
                 <div id="results-container" class="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <!-- Results will be dynamically loaded here -->
-                </div>
-            </div>
-        </section>
-
-        <!-- Methodology & Code Section -->
-        <section id="methodology" class="mb-24">
-            <h2 class="section-title">Methodology & Code</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <!-- EEG Preprocessing Pipeline -->
-                <div class="card md:col-span-2">
-                    <h3 class="text-xl font-semibold text-slate-800 mb-4">EEG Data Preprocessing Pipeline</h3>
-                    <div class="flex flex-wrap items-center justify-center text-center gap-2">
-                        <div class="p-3 bg-slate-100 rounded-lg">Signal Acquisition</div>
-                        <div class="text-slate-400 font-bold text-2xl">&rarr;</div>
-                        <div class="p-3 bg-slate-100 rounded-lg">1-100 Hz Filtering</div>
-                        <div class="text-slate-400 font-bold text-2xl">&rarr;</div>
-                        <div class="p-3 bg-slate-100 rounded-lg">PREP Pipeline</div>
-                        <div class="text-slate-400 font-bold text-2xl">&rarr;</div>
-                        <div class="p-3 bg-slate-100 rounded-lg">ICA (Extended Infomax)</div>
-                        <div class="text-slate-400 font-bold text-2xl">&rarr;</div>
-                        <div class="p-3 bg-slate-100 rounded-lg">Remove Artifacts (ICLabel)</div>
-                         <div class="text-slate-400 font-bold text-2xl">&rarr;</div>
-                        <div class="p-3 bg-slate-100 rounded-lg">4-64 Hz Filtering</div>
-                         <div class="text-slate-400 font-bold text-2xl">&rarr;</div>
-                        <div class="p-3 bg-slate-100 rounded-lg">Epoching (-1s to +3s)</div>
-                    </div>
-                </div>
-                
-                <!-- DL Architectures -->
-                <div class="card md:col-span-2">
-                    <h3 class="text-xl font-semibold text-slate-800 mb-4">Deep Learning Architectures</h3>
-                    <p class="text-slate-600 mb-4">We employed a suite of state-of-the-art DL models designed for EEG signal processing to ensure a robust analysis.</p>
-                    <ul class="list-disc list-inside space-y-2 text-slate-600">
-                        <li><span class="font-semibold">EEGNetv4:</span> A compact CNN for EEG-based BCIs, effective at capturing temporal and spatial features.</li>
-                        <li><span class="font-semibold">ContraNet:</span> A hybrid network designed for classifying EEG and EMG signals, especially with limited data.</li>
-                        <li><span class="font-semibold">Conformer:</span> A model combining convolution and transformers, tailored for motor imagery and emotion paradigms.</li>
-                        <li><span class="font-semibold">EEGVIT:</span> A Vision Transformer (ViT) based architecture adapted for visual task EEG data.</li>
-                        <li><span class="font-semibold">EEG-deformer:</span> A dense convolutional transformer for detecting cognitive attention and mental workload.</li>
-                    </ul>
                 </div>
             </div>
         </section>
