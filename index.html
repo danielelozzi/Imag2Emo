@@ -174,17 +174,7 @@ Standardized Labels</h1>
             </div>
         </section>
 
-        <!-- Conclusion Section -->
-        <section id="conclusion" class="text-center">
-             <h2 class="section-title">Conclusion & Future Directions</h2>
-             <div class="max-w-4xl mx-auto">
-                <div class="card">
-                     <p class="text-lg text-slate-600 leading-relaxed mb-6">Our study conclusively demonstrates that the neural response recorded via EEG is more closely correlated with a person's inner subjective experience than with the standardized classification of a visual stimulus. Integrating this subjectivity is not an obstacle, but the <span class="font-bold">fundamental requirement</span> for creating accurate, effective, and truly human-centered affective technologies.</p>
-                    <h3 class="text-xl font-semibold text-slate-800 mb-3">Future Work</h3>
-                    <p class="text-slate-600">To improve generalizability and replicability, future studies should not only integrate subjective self-assessments but also adopt standardized data formats like <span class="font-mono bg-slate-100 px-2 py-1 rounded">BIDS</span> (Brain Imaging Data Structure) and <span class="font-mono bg-slate-100 px-2 py-1 rounded">DICOM</span>. This will facilitate more efficient dataset sharing and the development of more robust, generalizable emotion recognition models.</p>
-                </div>
-            </div>
-        </section>
+        
 
     </main>
 
@@ -311,10 +301,9 @@ Standardized Labels</h1>
             const dimensionFolder = getDimensionFolder(dataset, dimension, labelType);
             const basePath = `${datasetFolder}/${labelType}/${dimensionFolder}/${validation}/${model}/scaling_ON`;
 
-            // URL per l'immagine delle curve
-            const imageUrl = `get_data.php?path=${encodeURIComponent(basePath + '/avg_curves.png')}`;
-            // URL per il report CSV
-            const reportUrl = `get_data.php?path=${encodeURIComponent(basePath + '/summary_metrics_per_classe.csv')}`;
+            // URL diretti ai file, senza PHP
+            const imageUrl = `results/${basePath}/avg_curves.png`;
+            const reportUrl = `results/${basePath}/summary_metrics_per_classe.csv`;
 
             resultsContainer.innerHTML = `
                 <div class="card flex justify-center items-center relative">
